@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+.img2threejs/
+outputs/
+work/
+.gitdata/
