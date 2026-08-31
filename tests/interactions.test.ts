@@ -7,6 +7,7 @@ describe('scene interaction mapping', () => {
     expect(resolveInteractionAction({ action: 'open-category', categoryId: 'brand' }, 3)).toEqual({ type: 'OPEN_CATEGORY', categoryId: 'brand' });
     expect(resolveInteractionAction({ action: 'next-project' }, 3)).toEqual({ type: 'NEXT_PROJECT', projectCount: 3 });
     expect(resolveInteractionAction({ action: 'previous-project' }, 3)).toEqual({ type: 'PREVIOUS_PROJECT', projectCount: 3 });
+    expect(resolveInteractionAction({ action: 'close-detail' }, 3)).toEqual({ type: 'CLOSE_DETAIL' });
     expect(resolveInteractionAction({ action: 'finish' }, 3)).toEqual({ type: 'FINISH' });
     expect(resolveInteractionAction({ action: 'restart' }, 3)).toEqual({ type: 'RESTART' });
     expect(resolveInteractionAction({ action: 'select-journey-station', stationIndex: 2 }, 4)).toEqual({

@@ -11,10 +11,11 @@ import { createJourneyModel } from '../models/journey';
 import { makeTextPanel } from '../three/geometry';
 import { damp, disposeObject, type SculptModelHandle } from '../three/runtime';
 import { getCoverScale, getDetailScale, getDirectoryLayout, getRenderProfile } from './layout';
+import { createWheelGestureGate, isHorizontalSwipe } from './gesturePolicy';
 import { resolveInteractionAction } from './interactions';
 import { createExperienceState, reduceExperience, type ExperienceAction, type ExperienceState } from './stateMachine';
 
-type PointerSnapshot = { x: number; y: number; clientX: number; clientY: number };
+type PointerSnapshot = { x: number; y: number; clientX: number; clientY: number; pointerId: number };
 
 export class PortfolioExperience {
   private readonly scene = new THREE.Scene();
@@ -38,6 +39,7 @@ export class PortfolioExperience {
   private state: ExperienceState;
   private hoveredHandle: SculptModelHandle | null = null;
   private pointerDown: PointerSnapshot | null = null;
+  private readonly wheelGestureGate = createWheelGestureGate({ threshold: 24, cooldownMs: 450, idleResetMs: 180 });
   private dragDistance = 0;
   private frameId = 0;
 
@@ -149,7 +151,9 @@ export class PortfolioExperience {
   private bindEvents(): void {
     this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
-    window.addEventListener('pointerup', this.onPointerUp);
+    this.renderer.domElement.addEventListener('pointerup', this.onPointerUp);
+    this.renderer.domElement.addEventListener('pointercancel', this.onPointerCancel);
+    this.renderer.domElement.addEventListener('lostpointercapture', this.onLostPointerCapture);
     this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.resize);
@@ -192,35 +196,99 @@ export class PortfolioExperience {
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    this.resetPointerInteraction();
     this.updatePointer(event);
-    this.pointerDown = { x: this.pointer.x, y: this.pointer.y, clientX: event.clientX, clientY: event.clientY };
+    this.pointerDown = {
+      x: this.pointer.x,
+      y: this.pointer.y,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      pointerId: event.pointerId,
+    };
     this.dragDistance = 0;
     this.renderer.domElement.setPointerCapture?.(event.pointerId);
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
-    if (!this.pointerDown) return;
-    const dx = event.clientX - this.pointerDown.clientX;
-    const horizontalSwipe = Math.abs(dx) > 48
-      && this.state.screen === 'detail'
-      && !['about', 'journey'].includes(this.currentCategory()?.presentation ?? '');
-    this.updatePointer(event);
-    if (horizontalSwipe) {
-      this.dispatch({ type: dx < 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT', projectCount: this.currentProjectCount() });
-    } else if (this.dragDistance < 12) {
-      const hit = this.pickTarget();
-      if (hit) this.activateTarget(hit);
-    }
-    this.pointerDown = null;
-    this.dragDistance = 0;
+    this.finishPointerInteraction(event, false);
+  };
+
+  private readonly onPointerCancel = (event: PointerEvent): void => {
+    this.finishPointerInteraction(event, true);
+  };
+
+  private readonly onLostPointerCapture = (event: PointerEvent): void => {
+    this.finishPointerInteraction(event, true);
   };
 
   private readonly onWheel = (event: WheelEvent): void => {
-    if (this.state.screen !== 'detail' || Math.abs(event.deltaY) < 8) return;
+    if (this.state.screen !== 'detail') return;
     if (['about', 'journey'].includes(this.currentCategory()?.presentation ?? '')) return;
     event.preventDefault();
-    this.dispatch({ type: event.deltaY > 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT', projectCount: this.currentProjectCount() });
+    const direction = this.wheelGestureGate.push(this.normalizeWheelDelta(event), performance.now());
+    if (direction) {
+      this.dispatch({
+        type: direction > 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT',
+        projectCount: this.currentProjectCount(),
+      });
+    }
   };
+
+  private finishPointerInteraction(event: PointerEvent, cancelled: boolean): void {
+    const pointerDown = this.pointerDown;
+    if (!pointerDown || pointerDown.pointerId !== event.pointerId) {
+      this.resetPointerInteraction();
+      return;
+    }
+
+    try {
+      if (cancelled) return;
+
+      const dx = event.clientX - pointerDown.clientX;
+      const dy = event.clientY - pointerDown.clientY;
+      this.dragDistance = Math.hypot(dx, dy);
+      this.updatePointer(event);
+      const isPageableDetail = this.state.screen === 'detail'
+        && !['about', 'journey'].includes(this.currentCategory()?.presentation ?? '');
+      if (isPageableDetail && isHorizontalSwipe({ dx, dy })) {
+        this.dispatch({ type: dx < 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT', projectCount: this.currentProjectCount() });
+      } else if (this.dragDistance < 12) {
+        const hit = this.pickTarget();
+        if (hit) this.activateTarget(hit);
+      }
+    } finally {
+      this.resetPointerInteraction();
+    }
+  }
+
+  private normalizeWheelDelta(event: WheelEvent): number {
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
+    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * this.renderer.domElement.clientHeight;
+    return event.deltaY;
+  }
+
+  private resetPointerInteraction(): void {
+    const pointerId = this.pointerDown?.pointerId;
+    this.pointerDown = null;
+    this.dragDistance = 0;
+    if (this.detailHandle) this.detailHandle.root.userData.dragRotation = { x: 0, y: 0 };
+    if (pointerId !== undefined) this.releasePointerCapture(pointerId);
+  }
+
+  private resetGestureState(): void {
+    this.resetPointerInteraction();
+    this.wheelGestureGate.reset();
+  }
+
+  private releasePointerCapture(pointerId: number): void {
+    try {
+      if (this.renderer.domElement.hasPointerCapture?.(pointerId)) {
+        this.renderer.domElement.releasePointerCapture?.(pointerId);
+      }
+    } catch {
+      // Pointer capture can already be released when cancellation is delivered.
+    }
+  }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     const presentation = this.currentCategory()?.presentation;
@@ -327,6 +395,7 @@ export class PortfolioExperience {
       return;
     }
     if (action.type === 'CLOSE_DETAIL') {
+      this.resetGestureState();
       this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: true });
       await this.detailHandle?.actions.close();
       this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
@@ -410,6 +479,7 @@ export class PortfolioExperience {
   }
 
   private clearDetail(): void {
+    this.resetGestureState();
     if (!this.detailHandle) return;
     this.unregisterHandle(this.detailHandle);
     this.detailHandle.dispose();
@@ -520,7 +590,13 @@ export class PortfolioExperience {
 
   destroy(): void {
     cancelAnimationFrame(this.frameId);
-    window.removeEventListener('pointerup', this.onPointerUp);
+    this.resetGestureState();
+    this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
+    this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp);
+    this.renderer.domElement.removeEventListener('pointercancel', this.onPointerCancel);
+    this.renderer.domElement.removeEventListener('lostpointercapture', this.onLostPointerCapture);
+    this.renderer.domElement.removeEventListener('wheel', this.onWheel);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('resize', this.resize);
     for (const handle of this.modelHandles) handle.dispose();
