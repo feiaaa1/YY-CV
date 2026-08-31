@@ -16,4 +16,16 @@ describe('measured canvas text layout', () => {
   test('truncates titles without splitting Unicode code points', () => {
     expect(truncateMeasuredText('\u4f5c\u54c1\u96c6\ud83c\udfa8\ufe0f\u957f\u6807\u9898', 6, measure)).toBe('\u4f5c\u54c1\u96c6\ud83c\udfa8\ufe0f\u2026');
   });
+
+  test('keeps combining sequences together when wrapping', () => {
+    expect(wrapMeasuredText('e\u0301x', 1, measure, 3)).toEqual(['e\u0301', 'x']);
+  });
+
+  test('keeps ZWJ emoji sequences together when wrapping', () => {
+    expect(wrapMeasuredText('\ud83d\udc69\u200d\ud83d\udcbbX', 1, measure, 3)).toEqual(['\ud83d\udc69\u200d\ud83d\udcbb', 'X']);
+  });
+
+  test('preserves CRLF paragraph boundaries', () => {
+    expect(wrapMeasuredText('one\r\ntwo', 4, measure, 2)).toEqual(['one', 'two']);
+  });
 });

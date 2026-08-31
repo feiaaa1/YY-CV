@@ -2,11 +2,38 @@ export type TextMeasure = (value: string) => number;
 
 const ellipsis = '\u2026';
 
+function isGraphemeExtension(value: string): boolean {
+  return /[\p{Mark}\uFE00-\uFE0F\u{1F3FB}-\u{1F3FF}]/u.test(value);
+}
+
+function fallbackGraphemes(text: string): string[] {
+  const graphemes: string[] = [];
+  let grapheme = '';
+
+  for (const codePoint of Array.from(text)) {
+    if (!grapheme || isGraphemeExtension(codePoint) || codePoint === '\u200D' || grapheme.endsWith('\u200D')) {
+      grapheme += codePoint;
+    } else {
+      graphemes.push(grapheme);
+      grapheme = codePoint;
+    }
+  }
+  if (grapheme) graphemes.push(grapheme);
+  return graphemes;
+}
+
+function splitGraphemes(text: string): string[] {
+  if (typeof Intl.Segmenter === 'function') {
+    return Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text), ({ segment }) => segment);
+  }
+  return fallbackGraphemes(text);
+}
+
 function splitLongToken(token: string, maxWidth: number, measure: TextMeasure): string[] {
   const lines: string[] = [];
   let line = '';
 
-  for (const grapheme of Array.from(token)) {
+  for (const grapheme of splitGraphemes(token)) {
     const next = `${line}${grapheme}`;
     if (line && measure(next) > maxWidth) {
       lines.push(line);
@@ -22,7 +49,7 @@ export function truncateMeasuredText(text: string, maxWidth: number, measure: Te
   if (maxWidth <= 0 || measure(ellipsis) > maxWidth) return '';
 
   let result = '';
-  for (const grapheme of Array.from(text)) {
+  for (const grapheme of splitGraphemes(text)) {
     if (measure(`${result}${grapheme}${ellipsis}`) > maxWidth) break;
     result += grapheme;
   }
