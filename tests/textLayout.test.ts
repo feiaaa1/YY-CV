@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { truncateMeasuredText, wrapMeasuredText } from '../src/three/textLayout';
+import { splitFallbackGraphemes, truncateMeasuredText, wrapMeasuredText } from '../src/three/textLayout';
 
 const measure = (value: string) => [...value].length;
 
@@ -27,5 +27,22 @@ describe('measured canvas text layout', () => {
 
   test('preserves CRLF paragraph boundaries', () => {
     expect(wrapMeasuredText('one\r\ntwo', 4, measure, 2)).toEqual(['one', 'two']);
+  });
+
+  test('fallback pairs regional-indicator flags', () => {
+    expect(splitFallbackGraphemes('\ud83c\udde8\ud83c\udde6\ud83c\uddfa\ud83c\uddf8')).toEqual(['\ud83c\udde8\ud83c\udde6', '\ud83c\uddfa\ud83c\uddf8']);
+  });
+
+  test('fallback keeps decomposed Hangul Jamo syllables together', () => {
+    expect(splitFallbackGraphemes('\u1112\u1161\u11abX')).toEqual(['\u1112\u1161\u11ab', 'X']);
+  });
+
+  test('fallback preserves combining, ZWJ, CRLF, and spacing-mark sequences', () => {
+    expect(splitFallbackGraphemes('e\u0301\ud83d\udc69\u200d\ud83d\udcbb\r\n\u0915\u093e')).toEqual([
+      'e\u0301',
+      '\ud83d\udc69\u200d\ud83d\udcbb',
+      '\r\n',
+      '\u0915\u093e',
+    ]);
   });
 });
