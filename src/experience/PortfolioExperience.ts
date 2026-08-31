@@ -10,7 +10,7 @@ import { createScrapbookModel } from '../models/scrapbook';
 import { createJourneyModel } from '../models/journey';
 import { makeTextPanel } from '../three/geometry';
 import { damp, disposeObject, type SculptModelHandle } from '../three/runtime';
-import { getDetailScale, getDirectoryLayout, getRenderProfile } from './layout';
+import { getCoverScale, getDetailScale, getDirectoryLayout, getRenderProfile } from './layout';
 import { resolveInteractionAction } from './interactions';
 import { createExperienceState, reduceExperience, type ExperienceAction, type ExperienceState } from './stateMachine';
 
@@ -33,6 +33,7 @@ export class PortfolioExperience {
   private readonly directoryHeader: THREE.Mesh;
   private readonly coverHandle: SculptModelHandle;
   private readonly thanksHandle: SculptModelHandle;
+  private keyLight!: THREE.DirectionalLight;
   private detailHandle: SculptModelHandle | null = null;
   private state: ExperienceState;
   private hoveredHandle: SculptModelHandle | null = null;
@@ -120,16 +121,16 @@ export class PortfolioExperience {
   private addLighting(): void {
     const hemisphere = new THREE.HemisphereLight('#FFF8DF', '#174F9E', 2.25);
     this.scene.add(hemisphere);
-    const key = new THREE.DirectionalLight('#FFF3D3', 3.2);
-    key.position.set(-4, 6, 8);
-    key.castShadow = true;
-    key.shadow.camera.near = 0.1;
-    key.shadow.camera.far = 30;
-    key.shadow.camera.left = -8;
-    key.shadow.camera.right = 8;
-    key.shadow.camera.top = 8;
-    key.shadow.camera.bottom = -8;
-    this.scene.add(key);
+    this.keyLight = new THREE.DirectionalLight('#FFF3D3', 3.2);
+    this.keyLight.position.set(-4, 6, 8);
+    this.keyLight.castShadow = true;
+    this.keyLight.shadow.camera.near = 0.1;
+    this.keyLight.shadow.camera.far = 30;
+    this.keyLight.shadow.camera.left = -8;
+    this.keyLight.shadow.camera.right = 8;
+    this.keyLight.shadow.camera.top = 8;
+    this.keyLight.shadow.camera.bottom = -8;
+    this.scene.add(this.keyLight);
     const rim = new THREE.DirectionalLight('#98D8FF', 1.9);
     rim.position.set(5, 1, -3);
     this.scene.add(rim);
@@ -474,6 +475,8 @@ export class PortfolioExperience {
     this.renderer.setPixelRatio(profile.pixelRatio);
     this.renderer.setSize(width, height, false);
     this.renderer.shadowMap.enabled = true;
+    this.keyLight.shadow.mapSize.width = profile.shadowMapSize;
+    this.keyLight.shadow.mapSize.height = profile.shadowMapSize;
     this.camera.aspect = width / height;
     this.camera.fov = profile.isMobile ? 48 : 38;
     this.camera.position.z = profile.isMobile ? 13.6 : 11.8;
@@ -490,7 +493,7 @@ export class PortfolioExperience {
     this.directoryHeader.position.set(profile.isMobile ? -2.1 : -4.85, profile.isMobile ? 4.55 : 3.48, -0.15);
     this.finishTag.position.set(profile.isMobile ? 1.75 : 4.7, profile.isMobile ? 4.55 : 3.45, 0.1);
     this.thanksHandle.root.scale.setScalar(profile.isMobile ? 0.82 : 1);
-    this.coverHandle.root.scale.setScalar(profile.isMobile ? 0.72 : 1);
+    this.coverHandle.root.scale.setScalar(getCoverScale(width, height));
     if (this.detailHandle) this.detailHandle.root.userData.targetScale = getDetailScale(width, height);
   };
 

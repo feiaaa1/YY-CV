@@ -4,7 +4,6 @@ export type RenderProfile = {
   isMobile: boolean;
   pixelRatio: number;
   shadowMapSize: number;
-  geometrySegments: number;
 };
 
 export function getDirectoryLayout(width: number, height: number): FolderLayoutItem[] {
@@ -33,8 +32,12 @@ export function getRenderProfile(width: number, height: number, devicePixelRatio
     isMobile,
     pixelRatio: Math.min(devicePixelRatio, isMobile ? 1.5 : 2),
     shadowMapSize: isMobile ? 1024 : 2048,
-    geometrySegments: isMobile ? 12 : 20,
   };
+}
+
+export function getCoverScale(width: number, height: number): number {
+  if (width >= 720 && width / height >= 0.85) return 1;
+  return Math.min(0.72, 0.54 * Math.min(1, width / 390));
 }
 
 export function getDetailScale(width: number, height: number): number {

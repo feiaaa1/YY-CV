@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { getDetailScale, getDirectoryLayout, getRenderProfile } from '../src/experience/layout';
+import { getCoverScale, getDetailScale, getDirectoryLayout, getRenderProfile } from '../src/experience/layout';
 
 describe('responsive scene layout', () => {
   test('uses a three-plus-two composition on desktop', () => {
@@ -16,12 +16,16 @@ describe('responsive scene layout', () => {
     expect((positions[2]?.y ?? 0) - (positions[4]?.y ?? 0)).toBeGreaterThanOrEqual(2.35);
   });
 
-  test('caps mobile render cost without removing interactions', () => {
+  test('fits the wide cover inside portrait viewports', () => {
+    expect(getCoverScale(390, 844)).toBeLessThanOrEqual(0.54);
+    expect(getCoverScale(1440, 900)).toBe(1);
+  });
+
+  test('returns only render settings consumed by the runtime', () => {
     expect(getRenderProfile(390, 844, 3)).toEqual({
       isMobile: true,
       pixelRatio: 1.5,
       shadowMapSize: 1024,
-      geometrySegments: 12,
     });
     expect(getRenderProfile(1440, 900, 3).pixelRatio).toBe(2);
   });
