@@ -7,11 +7,13 @@ function codePoint(value: string): number {
 }
 
 function isControl(value: string): boolean {
-  return value !== '\u200D' && /[\p{Cc}\p{Cf}]/u.test(value);
+  return value !== '\u200D' && !isPrepend(value) && !isExtend(value) && /[\p{Cc}\p{Cf}]/u.test(value);
 }
 
 function isExtend(value: string): boolean {
-  return /[\p{Mn}\p{Me}\uFE00-\uFE0F\u{1F3FB}-\u{1F3FF}]/u.test(value);
+  const point = codePoint(value);
+  return point === 0x200C || (point >= 0xE0020 && point <= 0xE007F)
+    || /[\p{Mn}\p{Me}\uFE00-\uFE0F\u{1F3FB}-\u{1F3FF}]/u.test(value);
 }
 
 function isSpacingMark(value: string): boolean {

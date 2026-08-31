@@ -3,6 +3,15 @@ import { splitFallbackGraphemes, truncateMeasuredText, wrapMeasuredText } from '
 
 const measure = (value: string) => [...value].length;
 
+function expectFallbackSegments(value: string, expected: string[]): void {
+  expect(splitFallbackGraphemes(value)).toEqual(expected);
+  if (typeof Intl.Segmenter === 'function') {
+    expect(splitFallbackGraphemes(value)).toEqual(
+      Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value), ({ segment }) => segment),
+    );
+  }
+}
+
 describe('measured canvas text layout', () => {
   test('preserves explicit lines and wraps Chinese by grapheme', () => {
     expect(wrapMeasuredText('\u7b2c\u4e00\u884c\n\u4e2d\u6587\u5185\u5bb9\u5f88\u957f', 4, measure, 4))
@@ -44,5 +53,26 @@ describe('measured canvas text layout', () => {
       '\r\n',
       '\u0915\u093e',
     ]);
+  });
+
+  test('fallback keeps Prepend characters with the following grapheme', () => {
+    expectFallbackSegments('\u0600A', ['\u0600A']);
+  });
+
+  test('fallback treats ZWNJ as Extend instead of a control', () => {
+    expectFallbackSegments('A\u200CB', ['A\u200C', 'B']);
+  });
+
+  test('fallback separates standalone controls', () => {
+    expectFallbackSegments('A\u0000B', ['A', '\u0000', 'B']);
+  });
+
+  test('fallback keeps emoji modifiers with their pictograph', () => {
+    expectFallbackSegments('\ud83d\udc4d\ud83c\udffdX', ['\ud83d\udc4d\ud83c\udffd', 'X']);
+  });
+
+  test('fallback joins Hangul LV/V and LVT/T transitions', () => {
+    expectFallbackSegments('\uac00\u1161', ['\uac00\u1161']);
+    expectFallbackSegments('\uac01\u11a8', ['\uac01\u11a8']);
   });
 });
