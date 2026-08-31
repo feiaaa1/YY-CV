@@ -2,6 +2,21 @@ import { describe, expect, test } from 'vitest';
 import { resolveInteractionAction } from '../src/experience/interactions';
 import experienceSource from '../src/experience/PortfolioExperience.ts?raw';
 
+function getMethodBody(source: string, signature: string): string {
+  const start = source.indexOf(signature);
+  if (start < 0) throw new Error(`Could not find ${signature}`);
+  const bodyStart = source.indexOf('{', start);
+  let depth = 0;
+
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(bodyStart + 1, index);
+  }
+
+  throw new Error(`Could not find the end of ${signature}`);
+}
+
 describe('scene interaction mapping', () => {
   test('maps Three.js target metadata to state-machine actions', () => {
     expect(resolveInteractionAction({ action: 'enter-directory' }, 3)).toEqual({ type: 'ENTER_DIRECTORY' });
@@ -41,5 +56,26 @@ describe('scene interaction mapping', () => {
     expect(experienceSource).toMatch(/if \(action\.type === 'CLOSE_DETAIL'\) \{\s*this\.resetGestureState\(\)/);
     expect(experienceSource).toMatch(/private clearDetail\(\): void \{\s*this\.resetGestureState\(\)/);
     expect(experienceSource).toMatch(/destroy\(\): void \{\s*cancelAnimationFrame\(this\.frameId\);\s*this\.resetGestureState\(\)/);
+  });
+
+  test('cancels an owned pointer interaction before it can navigate or activate targets', () => {
+    const finishPointerInteraction = getMethodBody(experienceSource, 'private finishPointerInteraction');
+    const cancelledReturn = finishPointerInteraction.indexOf('if (cancelled) return;');
+    const navigation = finishPointerInteraction.indexOf("type: dx < 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT'");
+    const activation = finishPointerInteraction.indexOf('this.activateTarget(hit);');
+
+    expect(finishPointerInteraction).toMatch(/cancelled\s*\?\s*this\.pointerSession\.cancel\(event\.pointerId\)/);
+    expect(cancelledReturn).toBeGreaterThanOrEqual(0);
+    expect(navigation).toBeGreaterThan(cancelledReturn);
+    expect(activation).toBeGreaterThan(cancelledReturn);
+  });
+
+  test('cleans up pointer drag state after every terminal interaction', () => {
+    const finishPointerInteraction = getMethodBody(experienceSource, 'private finishPointerInteraction');
+    const resetPointerInteraction = getMethodBody(experienceSource, 'private resetPointerInteraction');
+
+    expect(finishPointerInteraction).toMatch(/finally\s*\{\s*this\.resetPointerInteraction\(event\.pointerId\);\s*\}/);
+    expect(resetPointerInteraction).toMatch(/this\.dragDistance = 0;/);
+    expect(resetPointerInteraction).toMatch(/this\.detailHandle\.root\.userData\.dragRotation = \{ x: 0, y: 0 \};/);
   });
 });
