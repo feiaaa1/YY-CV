@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { truncateMeasuredText, wrapMeasuredText } from './textLayout';
 
 export type TextTextureOptions = {
   width?: number;
@@ -55,27 +56,14 @@ export function createTextTexture(options: TextTextureOptions): THREE.Texture {
   context.fillStyle = options.foreground ?? '#171923';
   context.font = `800 ${Math.round(height * (options.titleScale ?? 0.13))}px ${options.mono ? 'monospace' : 'Arial, "PingFang SC", sans-serif'}`;
   const maxWidth = width * 0.82;
-  let title = options.title;
-  while (context.measureText(title).width > maxWidth && title.length > 5) {
-    title = `${title.slice(0, -2)}…`;
-  }
+  const title = truncateMeasuredText(options.title, maxWidth, (value) => context.measureText(value).width);
   context.fillText(title, x, height * 0.43);
 
   if (options.subtitle) {
     context.font = `500 ${Math.round(height * (options.subtitleScale ?? 0.048))}px ${options.mono ? 'monospace' : 'Arial, "PingFang SC", sans-serif'}`;
     context.fillStyle = options.foreground ?? '#30323B';
-    const words = options.subtitle.split(' ');
-    const lines: string[] = [];
-    let line = '';
-    for (const word of words) {
-      const next = line ? `${line} ${word}` : word;
-      if (context.measureText(next).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else line = next;
-    }
-    if (line) lines.push(line);
-    lines.slice(0, 3).forEach((value, index) => context.fillText(value, x, height * (0.63 + index * 0.075)));
+    const lines = wrapMeasuredText(options.subtitle, maxWidth, (value) => context.measureText(value).width, 3);
+    lines.forEach((value, index) => context.fillText(value, x, height * (0.63 + index * 0.075)));
   }
 
   context.fillStyle = options.accent ?? '#F0C94D';
