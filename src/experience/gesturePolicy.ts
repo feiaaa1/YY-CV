@@ -9,6 +9,62 @@ export function isHorizontalSwipe({ dx, dy, threshold = 48, dominance = 1.2 }: S
   return Math.abs(dx) >= threshold && Math.abs(dx) >= Math.abs(dy) * dominance;
 }
 
+export type PointerSessionSnapshot = { pointerId: number };
+
+export type PointerSession<Snapshot extends PointerSessionSnapshot> = {
+  start(snapshot: Snapshot): boolean;
+  owns(pointerId: number): boolean;
+  get(pointerId: number): Snapshot | null;
+  end(pointerId: number): Snapshot | null;
+  cancel(pointerId: number): Snapshot | null;
+  reset(): Snapshot | null;
+  isActive(): boolean;
+};
+
+export function createPointerSession<Snapshot extends PointerSessionSnapshot>(): PointerSession<Snapshot> {
+  let active: Snapshot | null = null;
+  const end = (pointerId: number): Snapshot | null => {
+    if (!active || active.pointerId !== pointerId) return null;
+    const finished = active;
+    active = null;
+    return finished;
+  };
+
+  return {
+    start(snapshot) {
+      if (active) return false;
+      active = snapshot;
+      return true;
+    },
+    owns(pointerId) {
+      return active?.pointerId === pointerId;
+    },
+    get(pointerId) {
+      return active?.pointerId === pointerId ? active : null;
+    },
+    end,
+    cancel: end,
+    reset() {
+      const previous = active;
+      active = null;
+      return previous;
+    },
+    isActive() {
+      return active !== null;
+    },
+  };
+}
+
+export function normalizeWheelDelta(deltaY: number, deltaMode: number, pageHeight: number): number {
+  if (deltaMode === 1) return deltaY * 16;
+  if (deltaMode === 2) return deltaY * pageHeight;
+  return deltaY;
+}
+
+export function isPageablePresentation(presentation: string | undefined): boolean {
+  return !['about', 'journey'].includes(presentation ?? '');
+}
+
 export type WheelGestureGateOptions = {
   threshold: number;
   cooldownMs: number;

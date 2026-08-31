@@ -11,7 +11,13 @@ import { createJourneyModel } from '../models/journey';
 import { makeTextPanel } from '../three/geometry';
 import { damp, disposeObject, type SculptModelHandle } from '../three/runtime';
 import { getCoverScale, getDetailScale, getDirectoryLayout, getRenderProfile } from './layout';
-import { createWheelGestureGate, isHorizontalSwipe } from './gesturePolicy';
+import {
+  createPointerSession,
+  createWheelGestureGate,
+  isHorizontalSwipe,
+  isPageablePresentation,
+  normalizeWheelDelta,
+} from './gesturePolicy';
 import { resolveInteractionAction } from './interactions';
 import { createExperienceState, reduceExperience, type ExperienceAction, type ExperienceState } from './stateMachine';
 
@@ -38,7 +44,7 @@ export class PortfolioExperience {
   private detailHandle: SculptModelHandle | null = null;
   private state: ExperienceState;
   private hoveredHandle: SculptModelHandle | null = null;
-  private pointerDown: PointerSnapshot | null = null;
+  private readonly pointerSession = createPointerSession<PointerSnapshot>();
   private readonly wheelGestureGate = createWheelGestureGate({ threshold: 24, cooldownMs: 450, idleResetMs: 180 });
   private dragDistance = 0;
   private frameId = 0;
@@ -173,10 +179,12 @@ export class PortfolioExperience {
   }
 
   private readonly onPointerMove = (event: PointerEvent): void => {
+    if (this.pointerSession.isActive() && !this.pointerSession.owns(event.pointerId)) return;
     this.updatePointer(event);
-    if (this.pointerDown && this.detailHandle) {
-      const dx = event.clientX - this.pointerDown.clientX;
-      const dy = event.clientY - this.pointerDown.clientY;
+    const pointerDown = this.pointerSession.get(event.pointerId);
+    if (pointerDown && this.detailHandle) {
+      const dx = event.clientX - pointerDown.clientX;
+      const dy = event.clientY - pointerDown.clientY;
       this.dragDistance = Math.hypot(dx, dy);
       this.detailHandle.root.userData.dragRotation = {
         x: THREE.MathUtils.clamp(-dy * 0.0025, -0.12, 0.12),
@@ -196,15 +204,16 @@ export class PortfolioExperience {
   };
 
   private readonly onPointerDown = (event: PointerEvent): void => {
-    this.resetPointerInteraction();
+    if (this.pointerSession.isActive()) return;
     this.updatePointer(event);
-    this.pointerDown = {
+    const pointerDown = {
       x: this.pointer.x,
       y: this.pointer.y,
       clientX: event.clientX,
       clientY: event.clientY,
       pointerId: event.pointerId,
     };
+    if (!this.pointerSession.start(pointerDown)) return;
     this.dragDistance = 0;
     this.renderer.domElement.setPointerCapture?.(event.pointerId);
   };
@@ -223,9 +232,12 @@ export class PortfolioExperience {
 
   private readonly onWheel = (event: WheelEvent): void => {
     if (this.state.screen !== 'detail') return;
-    if (['about', 'journey'].includes(this.currentCategory()?.presentation ?? '')) return;
+    if (!isPageablePresentation(this.currentCategory()?.presentation)) return;
     event.preventDefault();
-    const direction = this.wheelGestureGate.push(this.normalizeWheelDelta(event), performance.now());
+    const direction = this.wheelGestureGate.push(
+      normalizeWheelDelta(event.deltaY, event.deltaMode, this.renderer.domElement.clientHeight),
+      performance.now(),
+    );
     if (direction) {
       this.dispatch({
         type: direction > 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT',
@@ -235,11 +247,10 @@ export class PortfolioExperience {
   };
 
   private finishPointerInteraction(event: PointerEvent, cancelled: boolean): void {
-    const pointerDown = this.pointerDown;
-    if (!pointerDown || pointerDown.pointerId !== event.pointerId) {
-      this.resetPointerInteraction();
-      return;
-    }
+    const pointerDown = cancelled
+      ? this.pointerSession.cancel(event.pointerId)
+      : this.pointerSession.end(event.pointerId);
+    if (!pointerDown) return;
 
     try {
       if (cancelled) return;
@@ -257,21 +268,15 @@ export class PortfolioExperience {
         if (hit) this.activateTarget(hit);
       }
     } finally {
-      this.resetPointerInteraction();
+      this.resetPointerInteraction(event.pointerId);
     }
   }
 
-  private normalizeWheelDelta(event: WheelEvent): number {
-    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
-    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * this.renderer.domElement.clientHeight;
-    return event.deltaY;
-  }
-
-  private resetPointerInteraction(): void {
-    const pointerId = this.pointerDown?.pointerId;
-    this.pointerDown = null;
+  private resetPointerInteraction(releasedPointerId?: number): void {
+    const pointerDown = this.pointerSession.reset();
     this.dragDistance = 0;
     if (this.detailHandle) this.detailHandle.root.userData.dragRotation = { x: 0, y: 0 };
+    const pointerId = releasedPointerId ?? pointerDown?.pointerId;
     if (pointerId !== undefined) this.releasePointerCapture(pointerId);
   }
 
