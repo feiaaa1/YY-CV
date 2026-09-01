@@ -373,12 +373,12 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   const controls = new THREE.Group();
   controls.name = 'corner-controls';
   controls.position.set(3.77, -2.44, 0.43);
-  const expand = makeTag('↗ ↙', '#FFFDF7', 'none');
+  const expand = makeTag('展开', '#EFFF69', 'none');
   expand.name = 'expand-control';
   expand.scale.setScalar(0.52);
   expand.position.x = -0.52;
   controls.add(expand); parts.set(expand.name, expand);
-  const closeTag = makeTag('↻  ×', '#FFFDF7', 'close-detail');
+  const closeTag = makeTag('关闭', '#F7A8FF', 'close-detail');
   closeTag.name = 'close-tag';
   closeTag.scale.setScalar(0.52);
   closeTag.position.x = 0.34;

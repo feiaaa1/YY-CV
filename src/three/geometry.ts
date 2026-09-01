@@ -109,13 +109,14 @@ export function updateTextPanel(mesh: THREE.Mesh, options: TextTextureOptions): 
 }
 
 export function makeTag(label: string, color: string, action: string): THREE.Mesh {
-  const tag = makeTextPanel(1.5, 0.52, 0.08, {
+  const tag = makeTextPanel(1.5, 0.52, 0.06, {
     title: label,
     background: color,
     foreground: '#172033',
     align: 'center',
     width: 640,
     height: 240,
+    titleScale: 0.17,
   });
   tag.userData.action = action;
   return tag;

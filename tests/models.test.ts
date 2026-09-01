@@ -205,6 +205,7 @@ describe('procedural model contracts', () => {
     expect([...folder.parts.keys()].filter((id) => id.startsWith('collage-backing-'))).toHaveLength(5);
     expect(outsideLabel.position.y).toBeGreaterThan(rearBottom - 0.27);
     expect(outsideLabel.position.y).toBeLessThan(rearBottom - 0.12);
+
     folder.dispose();
   });
 
