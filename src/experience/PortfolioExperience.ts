@@ -46,11 +46,13 @@ export class PortfolioExperience {
   private hoveredHandle: SculptModelHandle | null = null;
   private readonly pointerSession = createPointerSession<PointerSnapshot>();
   private readonly wheelGestureGate = createWheelGestureGate({ threshold: 24, cooldownMs: 450, idleResetMs: 180 });
+  private readonly reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   private dragDistance = 0;
   private frameId = 0;
+  private destroyed = false;
 
   constructor(private readonly container: HTMLElement, private readonly content: PortfolioContent) {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const prefersReducedMotion = this.reducedMotionQuery.matches;
     this.state = createExperienceState(prefersReducedMotion);
     this.scene.background = new THREE.Color('#2B82EE');
 
@@ -123,7 +125,7 @@ export class PortfolioExperience {
     this.bindEvents();
     this.resize();
     this.renderAccessibilityControls();
-    this.animate();
+    this.scheduleFrame();
   }
 
   private addLighting(): void {
@@ -161,6 +163,8 @@ export class PortfolioExperience {
     this.renderer.domElement.addEventListener('pointercancel', this.onPointerCancel);
     this.renderer.domElement.addEventListener('lostpointercapture', this.onLostPointerCapture);
     this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
+    this.reducedMotionQuery.addEventListener('change', this.onReducedMotionChange);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.resize);
     this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
@@ -572,7 +576,43 @@ export class PortfolioExperience {
     if (this.detailHandle) this.detailHandle.root.userData.targetScale = getDetailScale(width, height);
   };
 
+  private readonly onReducedMotionChange = (event: MediaQueryListEvent): void => {
+    const reduced = event.matches;
+    this.state = { ...this.state, reducedMotion: reduced };
+    for (const handle of this.modelHandles) handle.actions.setReducedMotion(reduced);
+    if (!reduced) return;
+    this.resetGestureState();
+    this.hoveredHandle?.actions.setHovered(false);
+    this.hoveredHandle = null;
+    this.pointer.set(2, 2);
+    this.camera.position.x = 0;
+    this.camera.position.y = 0.25;
+    this.camera.lookAt(0, 0, 0);
+  };
+
+  private readonly onVisibilityChange = (): void => {
+    if (document.hidden) {
+      this.stopAnimation();
+      return;
+    }
+    this.clock.getDelta();
+    this.scheduleFrame();
+  };
+
+  private scheduleFrame(): void {
+    if (this.destroyed || this.frameId !== 0) return;
+    this.frameId = requestAnimationFrame(this.animate);
+  }
+
+  private stopAnimation(): void {
+    if (this.frameId === 0) return;
+    cancelAnimationFrame(this.frameId);
+    this.frameId = 0;
+  }
+
   private readonly animate = (): void => {
+    this.frameId = 0;
+    if (this.destroyed) return;
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const elapsed = this.clock.elapsedTime;
     for (const handle of this.modelHandles) handle.update(delta, elapsed);
@@ -584,17 +624,20 @@ export class PortfolioExperience {
       this.detailHandle.root.rotation.x = damp(this.detailHandle.root.rotation.x, drag.x, 5, delta);
       this.detailHandle.root.rotation.y = damp(this.detailHandle.root.rotation.y, drag.y, 5, delta);
     }
-    const cameraX = this.state.screen === 'detail' ? 0 : this.pointer.x * 0.12;
-    const cameraY = 0.25 + (this.state.screen === 'detail' ? 0 : this.pointer.y * 0.08);
+    const tracksPointer = this.state.screen !== 'detail' && !this.state.reducedMotion;
+    const cameraX = tracksPointer ? this.pointer.x * 0.12 : 0;
+    const cameraY = 0.25 + (tracksPointer ? this.pointer.y * 0.08 : 0);
     this.camera.position.x = damp(this.camera.position.x, cameraX, 3, delta);
     this.camera.position.y = damp(this.camera.position.y, cameraY, 3, delta);
     this.camera.lookAt(0, 0, 0);
     this.renderer.render(this.scene, this.camera);
-    this.frameId = requestAnimationFrame(this.animate);
+    this.scheduleFrame();
   };
 
   destroy(): void {
-    cancelAnimationFrame(this.frameId);
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.stopAnimation();
     this.resetGestureState();
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
@@ -602,6 +645,8 @@ export class PortfolioExperience {
     this.renderer.domElement.removeEventListener('pointercancel', this.onPointerCancel);
     this.renderer.domElement.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     this.renderer.domElement.removeEventListener('wheel', this.onWheel);
+    this.reducedMotionQuery.removeEventListener('change', this.onReducedMotionChange);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('resize', this.resize);
     for (const handle of this.modelHandles) handle.dispose();

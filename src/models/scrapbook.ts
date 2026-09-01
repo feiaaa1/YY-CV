@@ -268,7 +268,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   root.name = `scrapbook-${category.id}`;
   root.userData.projectIndex = 0;
   root.userData.open = false;
-  const timelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
   const inactiveLeaves: THREE.Group[] = [];
@@ -505,7 +506,7 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     },
   }, (delta) => {
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
-    const lift = hovered && !root.userData.turning ? 1 : 0;
+    const lift = hovered && !root.userData.turning && root.userData.reducedMotion !== true ? 1 : 0;
     hoverRig.rotation.y = damp(hoverRig.rotation.y, pointer.x * 0.14 * lift, 7, delta);
     hoverRig.rotation.x = damp(hoverRig.rotation.x, -pointer.y * 0.07 * lift, 7, delta);
     hoverRig.rotation.z = damp(hoverRig.rotation.z, pointer.x * 0.012 * lift, 7, delta);

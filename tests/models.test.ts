@@ -398,6 +398,7 @@ describe('procedural model contracts', () => {
     expect(rightCollage?.parent).toBe(rightPivot);
     const restingAngle = leftPivot?.rotation.y ?? 0;
 
+    scrapbook.actions.setReducedMotion(false);
     scrapbook.root.userData.hoverPointer = { x: 0.9, y: 0.7 };
     scrapbook.actions.setHovered(true);
     scrapbook.update(1 / 12, 0);

@@ -113,7 +113,8 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
   root.name = `directory-folder-${category.id}`;
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
-  const timelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
 
   const rearPocket = makeExtrudedMesh(directoryRearShape(), category.color, 0.055, 0.022);
   rearPocket.name = 'rear-pocket';
@@ -197,7 +198,7 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
         .to(collageRoot.scale, { x: 1, y: 1, duration: 0.35 }, 0);
     }).finally(() => { root.userData.opened = false; }),
   }, (delta) => {
-    const hover = root.userData.hovered ? 1 : 0;
+    const hover = root.userData.hovered && root.userData.reducedMotion !== true ? 1 : 0;
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
     if (!root.userData.opened) {
       const pointerY = THREE.MathUtils.clamp(Number(pointer.y) || 0, -1, 1);

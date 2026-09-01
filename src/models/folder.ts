@@ -110,11 +110,12 @@ export function createFolderModel(options: FolderModelOptions): SculptModelHandl
       close: () => { root.userData.open = false; },
     },
     (delta, elapsed) => {
-      const hover = root.userData.hovered ? 1 : 0;
+      const still = root.userData.reducedMotion === true;
+      const hover = root.userData.hovered && !still ? 1 : 0;
       const open = root.userData.open ? 1 : 0;
       root.rotation.y = damp(root.rotation.y, hover * 0.08, 8, delta);
       root.rotation.x = damp(root.rotation.x, -hover * 0.045, 8, delta);
-      root.position.y += Math.sin(elapsed * 1.4 + options.id.length) * 0.0008;
+      if (!still) root.position.y += Math.sin(elapsed * 1.4 + options.id.length) * 0.0008;
       insert.position.y = damp(insert.position.y, (options.variant === 'cover' ? 0.25 : 0.46) + hover * 0.14 + open * 0.45, 7, delta);
       flapPivot.rotation.x = damp(flapPivot.rotation.x, open ? -0.82 : hover * -0.08, 7, delta);
     },

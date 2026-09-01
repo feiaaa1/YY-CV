@@ -268,7 +268,8 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   root.name = `about-cv-${category.id}`;
   root.userData.open = false;
   root.userData.projectIndex = 0;
-  const timelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
 
@@ -423,14 +424,16 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
     }),
   }, (delta, elapsed) => {
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
-    const hoverAmount = hovered ? 1 : 0;
+    const still = root.userData.reducedMotion === true;
+    const hoverAmount = hovered && !still ? 1 : 0;
+    const drift = still ? 0 : 1;
     const portraitFinal = finalTransforms.get(portraitCard)!;
     const abilitiesFinal = finalTransforms.get(abilities)!;
     portraitCard.position.z = damp(portraitCard.position.z, portraitFinal.z + hoverAmount * 0.1, 8, delta);
     portraitCard.rotation.z = damp(portraitCard.rotation.z, portraitFinal.rotationZ + hoverAmount * pointer.x * 0.025, 8, delta);
     abilities.position.z = damp(abilities.position.z, abilitiesFinal.z + hoverAmount * 0.07, 8, delta);
-    brownClip.rotation.y = damp(brownClip.rotation.y, hoverAmount * 0.08 + Math.sin(elapsed * 1.6) * 0.01, 6, delta);
-    redClip.rotation.y = damp(redClip.rotation.y, hoverAmount * -0.08 + Math.sin(elapsed * 1.4) * 0.01, 6, delta);
+    brownClip.rotation.y = damp(brownClip.rotation.y, hoverAmount * 0.08 + Math.sin(elapsed * 1.6) * 0.01 * drift, 6, delta);
+    redClip.rotation.y = damp(redClip.rotation.y, hoverAmount * -0.08 + Math.sin(elapsed * 1.4) * 0.01 * drift, 6, delta);
   });
   const baseDispose = handle.dispose;
   handle.dispose = () => { timelines.killActiveTimeline(); baseDispose(); };

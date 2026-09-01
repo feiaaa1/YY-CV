@@ -9,7 +9,8 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
   root.name = `book-${category.id}`;
   root.userData.projectIndex = projectIndex;
   root.userData.open = false;
-  const timelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
 

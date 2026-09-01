@@ -13,7 +13,8 @@ export function createThankYouModel(title: LocalizedText, contact: string, reduc
   root.name = 'thank-you-cards';
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
-  const timelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
 
   const thankTitle = makeTextPanel(10.25, 1.62, 0.03, {
     title: 'THANK YOU', background: BLUE, foreground: YELLOW, align: 'center', width: 1900, height: 330, titleScale: 0.65, transparentBackground: true,

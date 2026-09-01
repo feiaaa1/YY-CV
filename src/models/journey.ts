@@ -198,8 +198,10 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
   root.name = `journey-${category.id}`;
   root.userData.open = false;
   root.userData.selectedStation = -1;
-  const timelines = createTimelineController({ reducedMotion });
-  const popupTimelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const prefersStillness = () => root.userData.reducedMotion === true;
+  const timelines = createTimelineController({ reducedMotion: prefersStillness });
+  const popupTimelines = createTimelineController({ reducedMotion: prefersStillness });
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
   const rig = new THREE.Group();
@@ -443,12 +445,13 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
     }),
   }, (delta) => {
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
-    const amount = hovered ? 1 : 0;
+    const still = prefersStillness();
+    const amount = hovered && !still ? 1 : 0;
     rig.rotation.y = damp(rig.rotation.y, pointer.x * 0.055 * amount, 7, delta);
     rig.rotation.x = damp(rig.rotation.x, -pointer.y * 0.035 * amount, 7, delta);
     stations.forEach((station, index) => {
       if (root.userData.selectedStation >= 0) return;
-      const pulse = 1 + Math.sin(index * 1.7 + performance.now() * 0.0018) * 0.012 * amount;
+      const pulse = still ? 1 : 1 + Math.sin(index * 1.7 + performance.now() * 0.0018) * 0.012 * amount;
       station.scale.setScalar(damp(station.scale.x, pulse, 7, delta));
     });
   });

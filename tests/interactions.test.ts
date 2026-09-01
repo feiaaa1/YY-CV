@@ -55,7 +55,7 @@ describe('scene interaction mapping', () => {
   test('resets gesture state when detail scenes close, clear, or destroy', () => {
     expect(experienceSource).toMatch(/if \(action\.type === 'CLOSE_DETAIL'\) \{\s*this\.resetGestureState\(\)/);
     expect(experienceSource).toMatch(/private clearDetail\(\): void \{\s*this\.resetGestureState\(\)/);
-    expect(experienceSource).toMatch(/destroy\(\): void \{\s*cancelAnimationFrame\(this\.frameId\);\s*this\.resetGestureState\(\)/);
+    expect(experienceSource).toMatch(/destroy\(\): void \{\s*if \(this\.destroyed\) return;\s*this\.destroyed = true;\s*this\.stopAnimation\(\);\s*this\.resetGestureState\(\)/);
   });
 
   test('cancels an owned pointer interaction before it can navigate or activate targets', () => {

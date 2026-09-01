@@ -76,7 +76,8 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   root.name = 'reference-cover';
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
   const targets: THREE.Object3D[] = [];
-  const timelines = createTimelineController({ reducedMotion });
+  root.userData.reducedMotion = reducedMotion;
+  const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
 
   const folderAssembly = new THREE.Group();
   folderAssembly.name = 'folder-assembly';
@@ -276,7 +277,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
         .to(folderAssembly.scale, { x: 1, y: 1, z: 1, duration: 0.5 }, 0);
     }),
   }, (delta) => {
-    const hover = root.userData.hovered && !reducedMotion ? 1 : 0;
+    const hover = root.userData.hovered && root.userData.reducedMotion !== true ? 1 : 0;
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
     const pointerX = THREE.MathUtils.clamp(Number(pointer.x) || 0, -1, 1);
     const pointerY = THREE.MathUtils.clamp(Number(pointer.y) || 0, -1, 1);
