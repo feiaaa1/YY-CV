@@ -24,6 +24,8 @@ export function damp(current: number, target: number, lambda: number, delta: num
 }
 
 export function disposeObject(root: THREE.Object3D): void {
+  if (root.userData.disposed === true) return;
+  root.userData.disposed = true;
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     object.geometry.dispose();

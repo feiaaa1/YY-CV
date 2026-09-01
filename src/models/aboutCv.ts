@@ -363,7 +363,7 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   root.add(redClip); parts.set(redClip.name, redClip);
 
   const websiteButton = makeTextPanel(1.86, 0.55, 0.065, {
-    title: '↗  访问网站', background: '#F7F4EA', foreground: '#202126', align: 'center', width: 900, height: 260,
+    title: '↗  WEBSITE / COMING SOON', background: '#F7F4EA', foreground: '#202126', align: 'center', width: 900, height: 260,
   });
   websiteButton.name = 'website-button';
   websiteButton.userData.action = 'visit-website';

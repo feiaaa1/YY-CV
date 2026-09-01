@@ -16,6 +16,7 @@ export type ExperienceAction =
   | { type: 'NEXT_PROJECT'; projectCount: number }
   | { type: 'PREVIOUS_PROJECT'; projectCount: number }
   | { type: 'SELECT_JOURNEY_STATION'; stationIndex: number }
+  | { type: 'SET_PROJECT_INDEX'; projectIndex: number }
   | { type: 'CLOSE_JOURNEY_POPUP' }
   | { type: 'CLOSE_DETAIL' }
   | { type: 'FINISH' }
@@ -55,6 +56,8 @@ export function reduceExperience(state: ExperienceState, action: ExperienceActio
       return { ...state, projectIndex: action.projectCount > 0 ? (state.projectIndex - 1 + action.projectCount) % action.projectCount : 0 };
     case 'SELECT_JOURNEY_STATION':
       return { ...state, projectIndex: action.stationIndex, selectedJourneyStation: action.stationIndex };
+    case 'SET_PROJECT_INDEX':
+      return { ...state, projectIndex: action.projectIndex };
     case 'CLOSE_JOURNEY_POPUP':
       return { ...state, projectIndex: 0, selectedJourneyStation: null };
     case 'CLOSE_DETAIL':

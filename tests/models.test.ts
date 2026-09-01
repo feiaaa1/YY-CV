@@ -20,6 +20,7 @@ describe('procedural model contracts', () => {
     expect(cover.root.userData.reducedMotion).toBe(true);
 
     cover.dispose();
+    expect(() => cover.dispose()).not.toThrow();
   });
 
   test('reference cover exposes every identity-defining layer and flap hinge', () => {

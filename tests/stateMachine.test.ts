@@ -46,4 +46,15 @@ describe('experience state machine', () => {
     state = reduceExperience(state, { type: 'CLOSE_JOURNEY_POPUP' });
     expect(state).toMatchObject({ screen: 'detail', projectIndex: 0, selectedJourneyStation: null });
   });
+
+  test('restores a project index without changing the selected journey station', () => {
+    let state = createExperienceState(false);
+    state = reduceExperience(state, { type: 'ENTER_DIRECTORY' });
+    state = reduceExperience(state, { type: 'OPEN_CATEGORY', categoryId: 'poster-editorial' });
+    state = reduceExperience(state, { type: 'SELECT_JOURNEY_STATION', stationIndex: 2 });
+    state = reduceExperience(state, { type: 'SET_PROJECT_INDEX', projectIndex: 0 });
+
+    expect(state.projectIndex).toBe(0);
+    expect(state.selectedJourneyStation).toBe(2);
+  });
 });

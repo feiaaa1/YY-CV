@@ -2,12 +2,7 @@ import * as THREE from 'three';
 import type { Category, PortfolioContent } from '../content/types';
 import { createCoverModel } from '../models/cover';
 import { createDirectoryFolderModel, type CollageVariant } from '../models/directoryFolder';
-import { createOpenBookModel } from '../models/book';
 import { createThankYouModel } from '../models/thanks';
-import { createTicketStackModel } from '../models/ticket';
-import { createAboutCvModel } from '../models/aboutCv';
-import { createScrapbookModel } from '../models/scrapbook';
-import { createJourneyModel } from '../models/journey';
 import { makeTextPanel } from '../three/geometry';
 import { damp, disposeObject, type SculptModelHandle } from '../three/runtime';
 import { getCoverScale, getDetailScale, getDirectoryLayout, getRenderProfile } from './layout';
@@ -19,6 +14,9 @@ import {
   normalizeWheelDelta,
 } from './gesturePolicy';
 import { resolveInteractionAction } from './interactions';
+import { countProjects, describeScreen } from './accessibility';
+import { findCategory, hasCategory } from './categories';
+import { runLockedTransition } from './transitions';
 import { createExperienceState, reduceExperience, type ExperienceAction, type ExperienceState } from './stateMachine';
 
 type PointerSnapshot = { x: number; y: number; clientX: number; clientY: number; pointerId: number };
@@ -36,6 +34,9 @@ export class PortfolioExperience {
   private readonly folderHandles = new Map<string, SculptModelHandle>();
   private readonly accessibilityLayer: HTMLDivElement;
   private readonly liveRegion: HTMLDivElement;
+  private readonly semanticRegion: HTMLDivElement;
+  private readonly toast: HTMLDivElement;
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly finishTag: THREE.Mesh;
   private readonly directoryHeader: THREE.Mesh;
   private readonly coverHandle: SculptModelHandle;
@@ -69,8 +70,15 @@ export class PortfolioExperience {
     this.accessibilityLayer.className = 'sr-controls';
     this.liveRegion = document.createElement('div');
     this.liveRegion.setAttribute('aria-live', 'polite');
-    this.accessibilityLayer.append(this.liveRegion);
+    this.semanticRegion = document.createElement('div');
+    this.accessibilityLayer.append(this.liveRegion, this.semanticRegion);
     this.container.append(this.accessibilityLayer);
+
+    this.toast = document.createElement('div');
+    this.toast.className = 'scene-toast';
+    this.toast.setAttribute('role', 'status');
+    this.toast.dataset.visible = 'false';
+    this.container.append(this.toast);
 
     this.addLighting();
     this.coverHandle = createCoverModel(prefersReducedMotion);
@@ -167,14 +175,21 @@ export class PortfolioExperience {
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.resize);
-    this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
-      event.preventDefault();
-      this.liveRegion.textContent = '3D 场景暂时中断，正在等待恢复。';
-    });
-    this.renderer.domElement.addEventListener('webglcontextrestored', () => {
-      this.liveRegion.textContent = '3D 场景已恢复。';
-    });
+    this.renderer.domElement.addEventListener('webglcontextlost', this.onContextLost);
+    this.renderer.domElement.addEventListener('webglcontextrestored', this.onContextRestored);
   }
+
+  private readonly onContextLost = (event: Event): void => {
+    event.preventDefault();
+    this.stopAnimation();
+    this.announce('3D 场景暂时中断，正在等待恢复。', true);
+  };
+
+  private readonly onContextRestored = (): void => {
+    this.clock.getDelta();
+    this.scheduleFrame();
+    this.announce('3D 场景已恢复。', true);
+  };
 
   private updatePointer(event: PointerEvent): void {
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -337,9 +352,38 @@ export class PortfolioExperience {
     return true;
   }
 
+  private applyAction(action: ExperienceAction): void {
+    const unlocked = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
+    const next = reduceExperience(unlocked, action);
+    this.state = reduceExperience(next, { type: 'SET_TRANSITION_LOCK', locked: this.state.transitionLocked });
+  }
+
+  private runTransition(
+    operation: () => Promise<void> | void,
+    recovery: () => Promise<void> | void,
+    failureMessage: string,
+  ): Promise<boolean> {
+    return runLockedTransition(operation, recovery, {
+      lock: (locked) => {
+        this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked });
+      },
+      announce: (message) => this.announce(message, true),
+      onError: (error) => console.error(error),
+      failureMessage,
+    });
+  }
+
+  private showOnly(screen: 'cover' | 'directory' | 'thanks'): void {
+    this.clearDetail();
+    this.setSceneBackground('#2B82EE');
+    this.coverHandle.root.visible = screen === 'cover';
+    this.directoryGroup.visible = screen === 'directory';
+    this.thanksHandle.root.visible = screen === 'thanks';
+  }
+
   private activateTarget(target: THREE.Object3D): void {
     if (target.userData.action === 'visit-website') {
-      this.liveRegion.textContent = '网站链接为占位内容，替换个人资料后即可启用。';
+      this.announce('网站链接尚未配置，替换个人资料后即可启用。', true);
       return;
     }
     const action = resolveInteractionAction(target.userData as Record<string, unknown>, this.currentProjectCount());
@@ -348,108 +392,177 @@ export class PortfolioExperience {
 
   private async dispatch(action: ExperienceAction): Promise<void> {
     if (this.state.transitionLocked && action.type !== 'SET_TRANSITION_LOCK') return;
+
     if (action.type === 'ENTER_DIRECTORY') {
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: true });
-      await this.coverHandle.actions.open();
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
-      this.state = reduceExperience(this.state, action);
-      this.coverHandle.root.visible = false;
-      this.directoryGroup.visible = true;
-      this.renderAccessibilityControls();
+      await this.runTransition(
+        async () => {
+          await this.coverHandle.actions.open();
+          this.applyAction(action);
+          this.coverHandle.root.visible = false;
+          this.directoryGroup.visible = true;
+        },
+        () => {
+          this.applyAction({ type: 'ENTER_DIRECTORY' });
+          this.showOnly('directory');
+        },
+        '进入作品目录时出现问题，已直接显示目录。',
+      );
+      this.renderAccessibilityControls(true);
       return;
     }
+
     if (action.type === 'OPEN_CATEGORY') {
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: true });
-      await this.folderHandles.get(action.categoryId)?.actions.open();
-      const unlocked = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
-      const next = reduceExperience(unlocked, action);
-      if (next === unlocked) return;
-      this.state = reduceExperience(next, { type: 'SET_TRANSITION_LOCK', locked: true });
-      this.directoryGroup.visible = false;
-      await this.showDetail(action.categoryId);
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
-      this.renderAccessibilityControls();
+      if (!hasCategory(this.content, action.categoryId)) {
+        this.announce('该分类不可用，已留在作品目录。', true);
+        return;
+      }
+      await this.runTransition(
+        async () => {
+          await this.folderHandles.get(action.categoryId)?.actions.open();
+          this.applyAction(action);
+          this.directoryGroup.visible = false;
+          await this.showDetail(action.categoryId);
+        },
+        async () => {
+          this.applyAction({ type: 'CLOSE_DETAIL' });
+          await this.folderHandles.get(action.categoryId)?.actions.close();
+          this.showOnly('directory');
+        },
+        '打开该分类时出现问题，已返回作品目录。',
+      );
+      this.renderAccessibilityControls(true);
       return;
     }
+
     if (action.type === 'NEXT_PROJECT' || action.type === 'PREVIOUS_PROJECT') {
       const category = this.currentCategory();
-      if (category?.presentation === 'journey') return;
+      if (!category || category.presentation === 'journey') return;
       const count = this.currentProjectCount();
-      if (category?.presentation === 'scrapbook') {
+      if (category.presentation === 'scrapbook') {
         if (action.type === 'NEXT_PROJECT' && this.state.projectIndex >= count - 1) return;
         if (action.type === 'PREVIOUS_PROJECT' && this.state.projectIndex <= 0) return;
       }
-      const nextState = reduceExperience(this.state, action);
-      if (nextState.projectIndex === this.state.projectIndex) return;
-      this.state = reduceExperience(nextState, { type: 'SET_TRANSITION_LOCK', locked: true });
-      await this.detailHandle?.actions.setProject(nextState.projectIndex);
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
+      const nextIndex = reduceExperience(this.state, action).projectIndex;
+      if (nextIndex === this.state.projectIndex) return;
+      const previousIndex = this.state.projectIndex;
+      await this.runTransition(
+        async () => {
+          this.applyAction(action);
+          await this.detailHandle?.actions.setProject(nextIndex);
+        },
+        async () => {
+          this.applyAction({ type: 'SET_PROJECT_INDEX', projectIndex: previousIndex });
+          await this.detailHandle?.actions.setProject(previousIndex);
+        },
+        '切换项目时出现问题，已回到上一个项目。',
+      );
       this.renderAccessibilityControls();
       return;
     }
+
     if (action.type === 'SELECT_JOURNEY_STATION') {
       if (this.currentCategory()?.presentation !== 'journey') return;
-      this.state = reduceExperience(reduceExperience(this.state, action), { type: 'SET_TRANSITION_LOCK', locked: true });
-      await this.detailHandle?.actions.setProject(action.stationIndex);
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
-      this.renderAccessibilityControls();
+      await this.runTransition(
+        async () => {
+          this.applyAction(action);
+          await this.detailHandle?.actions.setProject(action.stationIndex);
+        },
+        async () => {
+          this.applyAction({ type: 'CLOSE_JOURNEY_POPUP' });
+          await this.detailHandle?.actions.setProject(-1);
+        },
+        '打开该站点时出现问题，已回到旅途地图。',
+      );
+      this.renderAccessibilityControls(true);
       return;
     }
+
     if (action.type === 'CLOSE_JOURNEY_POPUP') {
       if (this.currentCategory()?.presentation !== 'journey') return;
-      this.state = reduceExperience(reduceExperience(this.state, action), { type: 'SET_TRANSITION_LOCK', locked: true });
-      await this.detailHandle?.actions.setProject(-1);
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
-      this.renderAccessibilityControls();
+      await this.runTransition(
+        async () => {
+          this.applyAction(action);
+          await this.detailHandle?.actions.setProject(-1);
+        },
+        () => {
+          this.applyAction({ type: 'CLOSE_JOURNEY_POPUP' });
+        },
+        '返回旅途地图时出现问题，已重置站点选择。',
+      );
+      this.renderAccessibilityControls(true);
       return;
     }
+
     if (action.type === 'CLOSE_DETAIL') {
       this.resetGestureState();
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: true });
-      await this.detailHandle?.actions.close();
-      this.state = reduceExperience(this.state, { type: 'SET_TRANSITION_LOCK', locked: false });
       const categoryId = this.state.selectedCategoryId;
-      this.state = reduceExperience(this.state, action);
-      this.clearDetail();
-      if (categoryId) await this.folderHandles.get(categoryId)?.actions.close();
-      this.setSceneBackground('#2B82EE');
-      this.directoryGroup.visible = true;
-      this.renderAccessibilityControls();
+      await this.runTransition(
+        async () => {
+          await this.detailHandle?.actions.close();
+          this.applyAction(action);
+          this.clearDetail();
+          if (categoryId) await this.folderHandles.get(categoryId)?.actions.close();
+          this.setSceneBackground('#2B82EE');
+          this.directoryGroup.visible = true;
+        },
+        () => {
+          this.applyAction({ type: 'CLOSE_DETAIL' });
+          this.showOnly('directory');
+        },
+        '关闭详情时出现问题，已返回作品目录。',
+      );
+      this.renderAccessibilityControls(true);
       return;
     }
+
     if (action.type === 'FINISH') {
-      this.state = reduceExperience(this.state, action);
-      this.clearDetail();
-      this.setSceneBackground('#2B82EE');
-      this.directoryGroup.visible = false;
-      this.coverHandle.root.visible = false;
-      this.thanksHandle.root.visible = true;
-      await this.thanksHandle.actions.open();
-      this.renderAccessibilityControls();
+      await this.runTransition(
+        async () => {
+          this.applyAction(action);
+          this.clearDetail();
+          this.setSceneBackground('#2B82EE');
+          this.directoryGroup.visible = false;
+          this.coverHandle.root.visible = false;
+          this.thanksHandle.root.visible = true;
+          await this.thanksHandle.actions.open();
+        },
+        () => {
+          this.applyAction({ type: 'FINISH' });
+          this.showOnly('thanks');
+        },
+        '结束浏览时出现问题，已直接显示致谢画面。',
+      );
+      this.renderAccessibilityControls(true);
       return;
     }
+
     if (action.type === 'RESTART') {
-      await this.thanksHandle.actions.close();
-      this.state = reduceExperience(this.state, action);
-      this.setSceneBackground('#2B82EE');
-      this.thanksHandle.root.visible = false;
-      this.directoryGroup.visible = false;
-      this.coverHandle.root.visible = true;
-      await this.coverHandle.actions.close();
-      this.renderAccessibilityControls();
+      await this.runTransition(
+        async () => {
+          await this.thanksHandle.actions.close();
+          this.applyAction(action);
+          this.setSceneBackground('#2B82EE');
+          this.thanksHandle.root.visible = false;
+          this.directoryGroup.visible = false;
+          this.coverHandle.root.visible = true;
+          await this.coverHandle.actions.close();
+        },
+        () => {
+          this.applyAction({ type: 'RESTART' });
+          this.showOnly('cover');
+        },
+        '重新开始时出现问题，已直接返回封面。',
+      );
+      this.renderAccessibilityControls(true);
     }
   }
 
   private currentCategory(): Category | undefined {
-    return this.content.categories.find((category) => category.id === this.state.selectedCategoryId);
+    return findCategory(this.content, this.state.selectedCategoryId);
   }
 
   private currentProjectCount(): number {
-    const category = this.currentCategory();
-    if (category?.presentation === 'about') return 1;
-    if (category?.presentation === 'scrapbook') return category.scrapbookPages?.length ?? 1;
-    if (category?.presentation === 'journey') return category.journeyExperiences?.length ?? 1;
-    return category?.projects.length ?? 3;
+    return countProjects(this.currentCategory());
   }
 
   private async showDetail(categoryId: string): Promise<void> {
@@ -463,15 +576,34 @@ export class PortfolioExperience {
         : category.presentation === 'journey'
           ? '#A8CFE1'
         : category.presentation === 'book' ? '#C91F58' : '#A75EDF');
-    this.detailHandle = category.presentation === 'about'
-      ? createAboutCvModel(category, this.state.reducedMotion)
-      : category.presentation === 'scrapbook'
-        ? createScrapbookModel(category, this.state.reducedMotion)
-        : category.presentation === 'journey'
-          ? createJourneyModel(category, this.state.reducedMotion)
-        : category.presentation === 'book'
-          ? createOpenBookModel(category, 0, this.state.reducedMotion)
-          : createTicketStackModel(category, 0, this.state.reducedMotion);
+    switch (category.presentation) {
+      case 'about': {
+        const { createAboutCvModel } = await import('../models/aboutCv');
+        this.detailHandle = createAboutCvModel(category, this.state.reducedMotion);
+        break;
+      }
+      case 'scrapbook': {
+        const { createScrapbookModel } = await import('../models/scrapbook');
+        this.detailHandle = createScrapbookModel(category, this.state.reducedMotion);
+        break;
+      }
+      case 'journey': {
+        const { createJourneyModel } = await import('../models/journey');
+        this.detailHandle = createJourneyModel(category, this.state.reducedMotion);
+        break;
+      }
+      case 'book': {
+        const { createOpenBookModel } = await import('../models/book');
+        this.detailHandle = createOpenBookModel(category, 0, this.state.reducedMotion);
+        break;
+      }
+      case 'ticket': {
+        const { createTicketStackModel } = await import('../models/ticket');
+        this.detailHandle = createTicketStackModel(category, 0, this.state.reducedMotion);
+        break;
+      }
+    }
+    if (!this.detailHandle) return;
     this.detailHandle.root.scale.setScalar(0.02);
     this.detailHandle.root.userData.targetScale = getDetailScale(this.container.clientWidth, this.container.clientHeight);
     this.scene.add(this.detailHandle.root);
@@ -495,56 +627,41 @@ export class PortfolioExperience {
     this.detailHandle = null;
   }
 
-  private renderAccessibilityControls(): void {
-    this.accessibilityLayer.replaceChildren(this.liveRegion);
-    const status = this.state.screen === 'cover'
-      ? '封面：点击文件夹进入作品分类。'
-      : this.state.screen === 'directory'
-        ? '作品目录：五个分类文件夹。'
-        : this.state.screen === 'detail'
-          ? this.currentCategory()?.presentation === 'about'
-            ? '正在浏览自我介绍与履历总览。'
-            : this.currentCategory()?.presentation === 'journey'
-              ? this.state.selectedJourneyStation === null
-                ? '正在浏览实习旅途，选择一个站点查看经历。'
-                : `正在浏览实习旅途，第 ${this.state.selectedJourneyStation + 1} 个站点。`
-              : `正在浏览 ${this.currentCategory()?.title.zh ?? ''}，项目 ${this.state.projectIndex + 1}。`
-          : '感谢观看。';
-    this.liveRegion.textContent = status;
+  private announce(message: string, visible = false): void {
+    this.liveRegion.textContent = message;
+    if (!visible) return;
+    if (this.toastTimer !== null) clearTimeout(this.toastTimer);
+    this.toast.textContent = message;
+    this.toast.dataset.visible = 'true';
+    this.toastTimer = setTimeout(() => {
+      this.toast.dataset.visible = 'false';
+      this.toastTimer = null;
+    }, 4000);
+  }
 
-    const addButton = (label: string, action: ExperienceAction) => {
+  private renderAccessibilityControls(focusFirstControl = false): void {
+    const descriptor = describeScreen(this.content, this.state);
+    this.accessibilityLayer.replaceChildren(this.liveRegion, this.semanticRegion);
+    this.liveRegion.textContent = descriptor.status;
+
+    const heading = document.createElement('h2');
+    heading.textContent = descriptor.heading;
+    const details = descriptor.details.map((detail) => {
+      const paragraph = document.createElement('p');
+      paragraph.textContent = detail;
+      return paragraph;
+    });
+    this.semanticRegion.replaceChildren(heading, ...details);
+
+    const buttons = descriptor.controls.map((control) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = label;
-      button.addEventListener('click', () => this.dispatch(action));
-      this.accessibilityLayer.append(button);
-    };
-
-    if (this.state.screen === 'cover') addButton('进入作品目录', { type: 'ENTER_DIRECTORY' });
-    if (this.state.screen === 'directory') {
-      for (const category of this.content.categories) addButton(`打开${category.title.zh}`, { type: 'OPEN_CATEGORY', categoryId: category.id });
-      addButton('完成浏览', { type: 'FINISH' });
-    }
-    if (this.state.screen === 'detail') {
-      const count = this.currentProjectCount();
-      const category = this.currentCategory();
-      if (!['about', 'journey'].includes(category?.presentation ?? '')) {
-        addButton('上一个项目', { type: 'PREVIOUS_PROJECT', projectCount: count });
-        addButton('下一个项目', { type: 'NEXT_PROJECT', projectCount: count });
-      }
-      if (category?.presentation === 'journey') {
-        category.journeyExperiences?.forEach((experience, stationIndex) => {
-          addButton(`查看站点 ${stationIndex + 1}：${experience.company.zh}`, {
-            type: 'SELECT_JOURNEY_STATION', stationIndex,
-          });
-        });
-        if (this.state.selectedJourneyStation !== null) {
-          addButton('返回旅途地图', { type: 'CLOSE_JOURNEY_POPUP' });
-        }
-      }
-      addButton('关闭详情', { type: 'CLOSE_DETAIL' });
-    }
-    if (this.state.screen === 'thanks') addButton('重新浏览', { type: 'RESTART' });
+      button.textContent = control.label;
+      button.addEventListener('click', () => this.dispatch(control.action));
+      return button;
+    });
+    this.accessibilityLayer.append(...buttons);
+    if (focusFirstControl) buttons[0]?.focus({ preventScroll: true });
   }
 
   private readonly resize = (): void => {
@@ -645,10 +762,16 @@ export class PortfolioExperience {
     this.renderer.domElement.removeEventListener('pointercancel', this.onPointerCancel);
     this.renderer.domElement.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     this.renderer.domElement.removeEventListener('wheel', this.onWheel);
+    this.renderer.domElement.removeEventListener('webglcontextlost', this.onContextLost);
+    this.renderer.domElement.removeEventListener('webglcontextrestored', this.onContextRestored);
     this.reducedMotionQuery.removeEventListener('change', this.onReducedMotionChange);
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('resize', this.resize);
+    if (this.toastTimer !== null) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
     for (const handle of this.modelHandles) handle.dispose();
     disposeObject(this.directoryHeader);
     this.renderer.dispose();
