@@ -407,7 +407,7 @@ export class PortfolioExperience {
         },
         '进入作品目录时出现问题，已直接显示目录。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
       return;
     }
 
@@ -430,7 +430,7 @@ export class PortfolioExperience {
         },
         '打开该分类时出现问题，已返回作品目录。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
       return;
     }
 
@@ -473,7 +473,7 @@ export class PortfolioExperience {
         },
         '打开该站点时出现问题，已回到旅途地图。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
       return;
     }
 
@@ -489,7 +489,7 @@ export class PortfolioExperience {
         },
         '返回旅途地图时出现问题，已重置站点选择。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
       return;
     }
 
@@ -511,7 +511,7 @@ export class PortfolioExperience {
         },
         '关闭详情时出现问题，已返回作品目录。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
       return;
     }
 
@@ -532,7 +532,7 @@ export class PortfolioExperience {
         },
         '结束浏览时出现问题，已直接显示致谢画面。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
       return;
     }
 
@@ -553,7 +553,7 @@ export class PortfolioExperience {
         },
         '重新开始时出现问题，已直接返回封面。',
       );
-      this.renderAccessibilityControls(true);
+      this.renderAccessibilityControls();
     }
   }
 
