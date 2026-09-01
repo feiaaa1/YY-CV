@@ -12,6 +12,16 @@ import { createScrapbookModel } from '../src/models/scrapbook';
 import { createJourneyModel } from '../src/models/journey';
 
 describe('procedural model contracts', () => {
+  test('model handles expose live reduced-motion state', () => {
+    const cover = createCoverModel(false);
+
+    expect(cover.root.userData.reducedMotion).toBe(false);
+    cover.actions.setReducedMotion(true);
+    expect(cover.root.userData.reducedMotion).toBe(true);
+
+    cover.dispose();
+  });
+
   test('reference cover exposes every identity-defining layer and flap hinge', () => {
     const cover = createCoverModel(true);
     expect([...cover.parts.keys()]).toEqual(expect.arrayContaining([

@@ -8,7 +8,7 @@ export type TimelineController = {
   killActiveTimeline(): void;
 };
 
-export function createTimelineController(options: { reducedMotion: boolean }): TimelineController {
+export function createTimelineController(options: { reducedMotion: boolean | (() => boolean) }): TimelineController {
   let active: gsap.core.Timeline | null = null;
   let settleActive: (() => void) | null = null;
 
@@ -28,19 +28,22 @@ export function createTimelineController(options: { reducedMotion: boolean }): T
     get locked() { return active !== null; },
     run(build) {
       killActiveTimeline();
+      const reducedMotion = typeof options.reducedMotion === 'function'
+        ? options.reducedMotion()
+        : options.reducedMotion;
       return new Promise<void>((resolve) => {
         settleActive = resolve;
         const timeline = gsap.timeline({
           paused: true,
           defaults: {
-            duration: options.reducedMotion ? 0.001 : 0.62,
-            ease: options.reducedMotion ? 'none' : 'power3.inOut',
+            duration: reducedMotion ? 0.001 : 0.62,
+            ease: reducedMotion ? 'none' : 'power3.inOut',
           },
           onComplete: settle,
         });
         active = timeline;
         build(timeline);
-        if (options.reducedMotion) {
+        if (reducedMotion) {
           queueMicrotask(() => {
             if (active === timeline) timeline.progress(1);
           });

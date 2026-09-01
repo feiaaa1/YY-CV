@@ -23,4 +23,21 @@ describe('GSAP timeline controller', () => {
     expect(subject.x).toBe(3);
     expect(controller.locked).toBe(false);
   });
+
+  test('reads reduced-motion policy for every run', async () => {
+    let reduced = true;
+    const subject = { x: 0 };
+    const controller = createTimelineController({ reducedMotion: () => reduced });
+
+    await controller.run((timeline) => timeline.to(subject, { x: 1 }));
+    reduced = false;
+    const running = controller.run((timeline) => timeline.to(subject, { x: 2 }));
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    expect(subject.x).toBe(1);
+    expect(controller.locked).toBe(true);
+    controller.killActiveTimeline();
+    await running;
+    expect(controller.locked).toBe(false);
+  });
 });

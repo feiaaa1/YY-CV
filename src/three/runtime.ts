@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export type SculptModelActions = {
   setHovered(hovered: boolean): void;
+  setReducedMotion(reduced: boolean): void;
   open(): Promise<void> | void;
   close(): Promise<void> | void;
   setProject(index: number): Promise<void> | void;
@@ -44,6 +45,7 @@ export function createHandle(
   modelActions: Partial<SculptModelActions>,
   update: (delta: number, elapsed: number) => void = () => undefined,
 ): SculptModelHandle {
+  root.userData.reducedMotion ??= false;
   const initial = new Map<string, { position: THREE.Vector3; rotation: THREE.Euler; scale: THREE.Vector3 }>();
   for (const [id, part] of parts) {
     initial.set(id, { position: part.position.clone(), rotation: part.rotation.clone(), scale: part.scale.clone() });
@@ -51,6 +53,7 @@ export function createHandle(
 
   const actions: SculptModelActions = {
     setHovered: modelActions.setHovered ?? (() => undefined),
+    setReducedMotion: modelActions.setReducedMotion ?? ((reduced) => { root.userData.reducedMotion = reduced; }),
     open: modelActions.open ?? (() => undefined),
     close: modelActions.close ?? (() => undefined),
     setProject: modelActions.setProject ?? ((index) => { root.userData.projectIndex = index; }),
