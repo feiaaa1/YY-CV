@@ -77,7 +77,7 @@ export function createTicketStackModel(category: Category, projectIndex: number,
   parts.set('icon-tag', iconTag);
   targets.push(iconTag);
 
-  const closeTag = makeTag('CLOSE / 关闭', category.secondaryColor, 'close-detail');
+  const closeTag = makeTag('关闭', category.secondaryColor, 'close-detail');
   closeTag.position.set(-2.4, -2.36, 0.12);
   root.add(closeTag);
   parts.set('close-tag', closeTag);

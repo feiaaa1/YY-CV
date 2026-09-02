@@ -72,7 +72,7 @@ export function createThankYouModel(title: LocalizedText, contact: string, reduc
   root.add(bottomRail);
   parts.set(bottomRail.name, bottomRail);
 
-  const restart = makeTag('RESTART / 重新浏览', '#EFFF69', 'restart');
+  const restart = makeTag('重新浏览', '#EFFF69', 'restart');
   restart.name = 'restart-tab';
   restart.scale.setScalar(0.72);
   restart.position.set(4.35, -2.05, 0.15);

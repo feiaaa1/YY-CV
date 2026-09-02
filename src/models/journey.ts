@@ -352,11 +352,11 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
   popup.name = 'experience-popup'; popup.position.set(0, 0.15, 0.82); popup.visible = false;
   addPart(parts, rig, popup);
 
-  const popupClose = makeTag('×  BACK / 返回', '#F5D965', 'close-journey-popup');
+  const popupClose = makeTag('返回', '#F5D965', 'close-journey-popup');
   popupClose.name = 'popup-close'; popupClose.position.set(1.32, -0.78, 0.12); popup.add(popupClose);
   parts.set(popupClose.name, popupClose); targets.push(popupClose);
 
-  const closeTag = makeTag('CLOSE / 关闭', '#8ED7E2', 'close-detail');
+  const closeTag = makeTag('关闭', '#8ED7E2', 'close-detail');
   closeTag.name = 'close-tag'; closeTag.position.set(0, -3.35, 0.18);
   addPart(parts, root, closeTag); targets.push(closeTag);
 

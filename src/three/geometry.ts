@@ -109,14 +109,20 @@ export function updateTextPanel(mesh: THREE.Mesh, options: TextTextureOptions): 
 }
 
 export function makeTag(label: string, color: string, action: string): THREE.Mesh {
-  const tag = makeTextPanel(1.5, 0.52, 0.06, {
+  const tag = makeTextPanel(1.7, 0.58, 0.075, {
     title: label,
     background: color,
     foreground: '#172033',
     align: 'center',
     width: 640,
     height: 240,
-    titleScale: 0.17,
+    titleScale: 0.2,
+  });
+  const edgeColor = new THREE.Color(color).multiplyScalar(0.68);
+  const materials = Array.isArray(tag.material) ? tag.material : [tag.material];
+  materials.forEach((material, index) => {
+    if (index === 4 || !(material instanceof THREE.MeshStandardMaterial)) return;
+    material.color.copy(edgeColor);
   });
   tag.userData.action = action;
   return tag;

@@ -115,7 +115,7 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
     parts.set(clip.name, clip);
   }
 
-  const closeTag = makeTag('CLOSE / 关闭', '#EFFF69', 'close-detail');
+  const closeTag = makeTag('关闭', '#EFFF69', 'close-detail');
   closeTag.position.set(0, -2.65, 0.12);
   root.add(closeTag);
   parts.set('close-tag', closeTag);
