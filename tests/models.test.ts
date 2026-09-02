@@ -10,6 +10,7 @@ import { createDirectoryFolderModel } from '../src/models/directoryFolder';
 import { createAboutCvModel } from '../src/models/aboutCv';
 import { createScrapbookModel } from '../src/models/scrapbook';
 import { createJourneyModel } from '../src/models/journey';
+import { createPaperclip } from '../src/three/paperclip';
 
 describe('procedural model contracts', () => {
   test('model handles expose live reduced-motion state', () => {
@@ -21,6 +22,20 @@ describe('procedural model contracts', () => {
 
     cover.dispose();
     expect(() => cover.dispose()).not.toThrow();
+  });
+
+  test('paperclip uses a continuous nested-loop metal wire with rounded terminals', () => {
+    const clip = createPaperclip('#9BBFE0');
+    const wire = clip.getObjectByName('wire') as THREE.Mesh;
+    const material = wire.material as THREE.MeshStandardMaterial;
+    wire.geometry.computeBoundingBox();
+    const size = wire.geometry.boundingBox!.getSize(new THREE.Vector3());
+
+    expect(clip.children).toHaveLength(3);
+    expect(size.y).toBeGreaterThan(size.x * 1.2);
+    expect(material.metalness).toBeGreaterThan(0.85);
+    expect(material.roughness).toBeLessThan(0.3);
+    clip.traverse((object) => object instanceof THREE.Mesh && object.geometry.dispose());
   });
 
   test('reference cover exposes every identity-defining layer and flap hinge', () => {

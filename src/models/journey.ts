@@ -3,6 +3,7 @@ import type { Category, JourneyExperience } from '../content/types';
 import { createTimelineController } from '../animation/timelines';
 import { makeExtrudedMesh, makeTag, makeTextPanel, roundedRectShape, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
+import { createPaperclip } from '../three/paperclip';
 
 const stationPositions = [
   new THREE.Vector3(-3.25, -0.75, 0.34),
@@ -30,26 +31,6 @@ function createScallopHeader(name: string, color: string, width: number, offsetX
     scallop.position.set(offsetX - width / 2 + 0.38 + index * ((width - 0.76) / Math.max(1, count - 1)), -0.14, 0);
     group.add(scallop);
   }
-  return group;
-}
-
-function createPaperclip(): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'paperclip';
-  const points = [
-    new THREE.Vector3(-0.42, -0.5, 0), new THREE.Vector3(-0.5, 0.24, 0),
-    new THREE.Vector3(-0.24, 0.58, 0), new THREE.Vector3(0.18, 0.56, 0),
-    new THREE.Vector3(0.43, 0.22, 0), new THREE.Vector3(0.35, -0.52, 0),
-    new THREE.Vector3(0.12, -0.52, 0), new THREE.Vector3(0.08, 0.18, 0),
-    new THREE.Vector3(0.18, 0.3, 0), new THREE.Vector3(0.29, 0.18, 0),
-  ];
-  const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
-  const wire = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 42, 0.025, 8, false),
-    new THREE.MeshStandardMaterial({ color: '#D8D19B', metalness: 0.78, roughness: 0.28 }),
-  );
-  wire.castShadow = true;
-  group.add(wire);
   return group;
 }
 
@@ -279,7 +260,7 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
 
   const pennants = createPennants(); pennants.position.set(0, 1.08, 0.28);
   addPart(parts, rig, pennants);
-  const paperclip = createPaperclip(); paperclip.position.set(4.15, 1.65, 0.35); paperclip.rotation.z = -0.42;
+  const paperclip = createPaperclip('#D8D19B', 1, 0.025); paperclip.position.set(4.15, 1.65, 0.35); paperclip.rotation.z = -0.42;
   addPart(parts, rig, paperclip);
 
   const cloudField = createCloudField();

@@ -3,6 +3,7 @@ import type { Category } from '../content/types';
 import { createTimelineController } from '../animation/timelines';
 import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
+import { createPaperclip } from '../three/paperclip';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -242,26 +243,6 @@ function makeAbilityCard(label: string, color: string, glyph: string): THREE.Mes
     context.textAlign = 'left';
   });
   return makePaperPanel(0.82, 1.03, 0.055, color, texture);
-}
-
-function createPaperclip(color: string, scale = 1): THREE.Group {
-  const group = new THREE.Group();
-  const points = [
-    new THREE.Vector3(-0.22, -0.46, 0), new THREE.Vector3(-0.30, 0.14, 0),
-    new THREE.Vector3(-0.16, 0.46, 0), new THREE.Vector3(0.16, 0.46, 0),
-    new THREE.Vector3(0.30, 0.14, 0), new THREE.Vector3(0.22, -0.46, 0),
-    new THREE.Vector3(0.06, -0.46, 0), new THREE.Vector3(0.10, 0.12, 0),
-    new THREE.Vector3(0.06, 0.27, 0), new THREE.Vector3(-0.08, 0.27, 0),
-    new THREE.Vector3(-0.13, 0.14, 0), new THREE.Vector3(-0.10, -0.42, 0),
-  ];
-  const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
-  const geometry = new THREE.TubeGeometry(curve, 48, 0.035, 10, false);
-  const material = new THREE.MeshStandardMaterial({ color, metalness: 0.82, roughness: 0.22 });
-  const wire = new THREE.Mesh(geometry, material);
-  wire.castShadow = true;
-  group.add(wire);
-  group.scale.setScalar(scale);
-  return group;
 }
 
 export function createAboutCvModel(category: Category, reducedMotion = false): SculptModelHandle {
