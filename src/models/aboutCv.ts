@@ -3,7 +3,6 @@ import type { Category } from '../content/types';
 import { createTimelineController } from '../animation/timelines';
 import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
-import { createPaperclip } from '../three/paperclip';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -326,18 +325,6 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   contactPanel.position.set(2.91, -0.46, 0.132);
   root.add(contactPanel); parts.set(contactPanel.name, contactPanel);
 
-  const brownClip = createPaperclip('#5D3A37', 0.74, 0.035, 0.62);
-  brownClip.name = 'brown-paperclip';
-  brownClip.position.set(-2.45, 2.38, 0.48);
-  brownClip.rotation.z = 0.035;
-  root.add(brownClip); parts.set(brownClip.name, brownClip);
-
-  const redClip = createPaperclip('#F03759', 0.86, 0.035, 0.62);
-  redClip.name = 'red-paperclip';
-  redClip.position.set(3.25, 2.43, 0.35);
-  redClip.rotation.z = -0.035;
-  root.add(redClip); parts.set(redClip.name, redClip);
-
   const websiteButton = makeTextPanel(1.86, 0.55, 0.065, {
     title: '↗  WEBSITE / COMING SOON', background: '#F7F4EA', foreground: '#202126', align: 'center', width: 900, height: 260,
   });
@@ -362,7 +349,7 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   root.add(controls); parts.set(controls.name, controls);
 
   const finalTransforms = new Map<THREE.Object3D, { y: number; z: number; rotationZ: number }>();
-  for (const part of [mainBoard, tabBack, aboutPrint, portraitCard, abilities, softwarePanel, experiencePanel, contactPanel, brownClip, redClip, websiteButton, controls]) {
+  for (const part of [mainBoard, tabBack, aboutPrint, portraitCard, abilities, softwarePanel, experiencePanel, contactPanel, websiteButton, controls]) {
     finalTransforms.set(part, { y: part.position.y, z: part.position.z, rotationZ: part.rotation.z });
   }
 
@@ -389,8 +376,6 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
         .to(softwarePanel.position, { y: finalTransforms.get(softwarePanel)!.y, z: finalTransforms.get(softwarePanel)!.z, duration: 0.55 }, 0.28)
         .to(experiencePanel.position, { y: finalTransforms.get(experiencePanel)!.y, z: finalTransforms.get(experiencePanel)!.z, duration: 0.55 }, 0.32)
         .to(contactPanel.position, { y: finalTransforms.get(contactPanel)!.y, z: finalTransforms.get(contactPanel)!.z, duration: 0.55 }, 0.36)
-        .to(brownClip.position, { y: finalTransforms.get(brownClip)!.y, z: finalTransforms.get(brownClip)!.z, duration: 0.46 }, 0.34)
-        .to(redClip.position, { y: finalTransforms.get(redClip)!.y, z: finalTransforms.get(redClip)!.z, duration: 0.46 }, 0.375)
         .to(websiteButton.position, { y: finalTransforms.get(websiteButton)!.y, z: finalTransforms.get(websiteButton)!.z, duration: 0.46 }, 0.41)
         .to(controls.position, { y: finalTransforms.get(controls)!.y, z: finalTransforms.get(controls)!.z, duration: 0.46 }, 0.445);
     }),
@@ -408,8 +393,6 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
     portraitCard.position.z = damp(portraitCard.position.z, portraitFinal.z + hoverAmount * 0.1, 8, delta);
     portraitCard.rotation.z = damp(portraitCard.rotation.z, portraitFinal.rotationZ + hoverAmount * pointer.x * 0.025, 8, delta);
     abilities.position.z = damp(abilities.position.z, abilitiesFinal.z + hoverAmount * 0.07, 8, delta);
-    brownClip.rotation.y = damp(brownClip.rotation.y, hoverAmount * 0.08 + Math.sin(elapsed * 1.6) * 0.01 * drift, 6, delta);
-    redClip.rotation.y = damp(redClip.rotation.y, hoverAmount * -0.08 + Math.sin(elapsed * 1.4) * 0.01 * drift, 6, delta);
   });
   const baseDispose = handle.dispose;
   handle.dispose = () => { timelines.killActiveTimeline(); baseDispose(); };

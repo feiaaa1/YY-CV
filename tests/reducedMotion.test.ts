@@ -71,16 +71,10 @@ describe('live reduced motion', () => {
     folder.dispose();
   });
 
-  test('about CV stops idle paperclip drift under reduced motion', () => {
-    const about = createAboutCvModel(portfolioContent.categories[0]!, false);
-    const clip = about.parts.get('brown-paperclip')!;
-
-    settle(about.update, 3.2, 60);
-    expect(Math.abs(clip.rotation.y)).toBeGreaterThan(0.005);
-
-    about.actions.setReducedMotion(true);
-    settle(about.update);
-    expect(Math.abs(clip.rotation.y)).toBeLessThan(5e-4);
+  test('about CV has no decorative paperclips', () => {
+    const about = createAboutCvModel(portfolioContent.categories[0]!, true);
+    expect(about.parts.has('brown-paperclip')).toBe(false);
+    expect(about.parts.has('red-paperclip')).toBe(false);
     about.dispose();
   });
 

@@ -349,7 +349,7 @@ describe('procedural model contracts', () => {
     expect([...about.parts.keys()]).toEqual(expect.arrayContaining([
       'ruled-background', 'main-board', 'cv-tab-stack', 'portrait-card',
       'about-print', 'abilities-cards', 'software-panel', 'experience-panel',
-      'contact-panel', 'brown-paperclip', 'red-paperclip', 'website-button',
+      'contact-panel', 'website-button',
       'corner-controls', 'close-tag',
     ]));
     expect(about.interactiveTargets.some((target) => target.userData.action === 'close-detail')).toBe(true);
