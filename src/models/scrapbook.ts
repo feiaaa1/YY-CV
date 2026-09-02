@@ -243,15 +243,8 @@ function makeRoundControl(id: string, label: string, action: string): THREE.Grou
   const group = new THREE.Group();
   group.name = id;
   group.userData.action = action;
-  const disc = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.43, 0.43, 0.1, 32),
-    new THREE.MeshStandardMaterial({ color: '#FFFDF6', roughness: 0.82 }),
-  );
-  disc.rotation.x = Math.PI / 2;
-  disc.castShadow = true;
-  group.add(disc);
   const text = makeTextPanel(0.72, 0.58, 0.02, {
-    title: label, background: '#FFFDF6', foreground: '#11131C', align: 'center',
+    title: label, background: '#FFFDF6', foreground: '#11131C', align: 'center', transparentBackground: true,
     titleScale: 0.27, width: 520, height: 420,
   });
   text.name = `${id}-label`;
@@ -383,8 +376,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   pageCounter.position.set(0, 3.18, -0.02);
   root.add(pageCounter); parts.set(pageCounter.name, pageCounter);
 
-  const closeTag = makeRoundControl('close-tag', '×', 'close-detail');
-  closeTag.position.set(1.65, -3.15, 0.05);
+  const closeTag = makeRoundControl('close-tag', '关闭', 'close-detail');
+  closeTag.position.set(3.15, -2.75, 0.12);
   root.add(closeTag); parts.set(closeTag.name, closeTag); targets.push(closeTag);
 
   const hoverRig = new THREE.Group();

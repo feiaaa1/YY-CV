@@ -422,6 +422,18 @@ describe('procedural model contracts', () => {
     scrapbook.dispose();
   });
 
+  test('scrapbook close control is transparent and placed at the lower right', () => {
+    const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
+    const closeTag = scrapbook.parts.get('close-tag')!;
+    const label = closeTag.getObjectByName('close-tag-label') as THREE.Mesh;
+    const materials = Array.isArray(label.material) ? label.material : [label.material];
+
+    expect(closeTag.position.x).toBeGreaterThan(3);
+    expect(closeTag.position.y).toBeLessThan(-2.5);
+    expect(materials.some((material) => material instanceof THREE.MeshStandardMaterial && material.opacity === 0)).toBe(true);
+    scrapbook.dispose();
+  });
+
   test('scrapbook opens into a persistent V angle instead of flattening at the spine', async () => {
     const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
     const hoverRig = scrapbook.parts.get('book-hover-rig');
