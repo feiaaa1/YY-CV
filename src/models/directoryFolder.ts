@@ -64,11 +64,11 @@ function makeCutout(
     const radius = shape === 'dot' ? 0.16 : shape === 'circle' ? 0.29 : 0.25;
     const sides = shape === 'circle' ? 24 : 10;
     const backing = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius + 0.055, radius + 0.055, 0.018, sides),
+      new THREE.CylinderGeometry(radius + 0.055, radius + 0.055, 0.006, sides),
       new THREE.MeshStandardMaterial({ color: '#FFFDF5', roughness: 0.92 }),
     );
     const artwork = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius, radius, 0.012, sides),
+      new THREE.CylinderGeometry(radius, radius, 0.004, sides),
       new THREE.MeshStandardMaterial({ color, roughness: 0.72 }),
     );
     backing.rotation.x = Math.PI / 2;
@@ -78,8 +78,8 @@ function makeCutout(
 
   const height = shape === 'ticket' ? 0.76 : 0.62;
   return {
-    backing: makeExtrudedMesh(roundedRectShape(0.62, height + 0.08, 0.09), '#FFFDF5', 0.018, 0.006),
-    artwork: makeExtrudedMesh(roundedRectShape(0.53, height - 0.02, 0.065), color, 0.012, 0.004),
+    backing: makeExtrudedMesh(roundedRectShape(0.62, height + 0.08, 0.09), '#FFFDF5', 0.006, 0),
+    artwork: makeExtrudedMesh(roundedRectShape(0.53, height - 0.02, 0.065), color, 0.004, 0),
   };
 }
 
@@ -96,9 +96,9 @@ function addCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, vari
     const cutout = makeCutout(placement.shape, palette[index]!);
     cutout.backing.name = `collage-backing-${index}`;
     cutout.artwork.name = `collage-piece-${index}`;
-    const layerZ = index * 0.025;
+    const layerZ = index * 0.04;
     cutout.backing.position.set(placement.x, placement.y, layerZ);
-    cutout.artwork.position.set(placement.x, placement.y, layerZ + 0.024);
+    cutout.artwork.position.set(placement.x, placement.y, layerZ + 0.009);
     cutout.backing.rotation.z = placement.r;
     cutout.artwork.rotation.z = placement.r;
     cutout.backing.castShadow = true;

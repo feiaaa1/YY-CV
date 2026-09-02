@@ -209,6 +209,18 @@ describe('procedural model contracts', () => {
     folder.dispose();
   });
 
+  test('directory collage pieces stay paper-thin to prevent layer intersections', () => {
+    const folder = createDirectoryFolderModel(portfolioContent.categories[0]!, 'sport', true);
+    for (const [name, object] of folder.parts) {
+      if (!name.startsWith('collage-')) continue;
+      if (!(object instanceof THREE.Mesh)) continue;
+      object.geometry.computeBoundingBox();
+      const size = object.geometry.boundingBox!.getSize(new THREE.Vector3());
+      expect(Math.min(size.x, size.y, size.z)).toBeLessThan(0.012);
+    }
+    folder.dispose();
+  });
+
   test('directory hover opens only the front panel while the folder root stays fixed', () => {
     const folder = createDirectoryFolderModel(portfolioContent.categories[0]!, 'business', false);
     const hinge = folder.parts.get('front-pocket-hinge') as THREE.Group;
