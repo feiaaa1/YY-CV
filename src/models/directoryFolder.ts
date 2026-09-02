@@ -96,9 +96,9 @@ function addCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, vari
     const cutout = makeCutout(placement.shape, palette[index]!);
     cutout.backing.name = `collage-backing-${index}`;
     cutout.artwork.name = `collage-piece-${index}`;
-    const layerZ = index * 0.04;
+    const layerZ = index * 0.006;
     cutout.backing.position.set(placement.x, placement.y, layerZ);
-    cutout.artwork.position.set(placement.x, placement.y, layerZ + 0.009);
+    cutout.artwork.position.set(placement.x, placement.y, layerZ + 0.005);
     cutout.backing.rotation.z = placement.r;
     cutout.artwork.rotation.z = placement.r;
     cutout.backing.castShadow = true;
@@ -137,7 +137,8 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
 
   const collageRoot = new THREE.Group();
   collageRoot.name = 'collage-root';
-  collageRoot.position.set(0, 0.48, 0.04);
+  // Keep collage layers behind the closed front pocket surface.
+  collageRoot.position.set(0, 0.48, 0.005);
   addCollage(collageRoot, parts, variant);
   root.add(collageRoot);
   parts.set(collageRoot.name, collageRoot);
