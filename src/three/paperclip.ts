@@ -31,8 +31,7 @@ const centerline = [
   new THREE.Vector3(-1, -0.05, 0),
 ];
 
-// Reference wire gauge is slender; keep the tube diameter at one fifth of the original model.
-export function createPaperclip(color: string, scale = 1, radius = 0.007): THREE.Group {
+export function createPaperclip(color: string, scale = 1, radius = 0.035): THREE.Group {
   const group = new THREE.Group();
   group.name = 'paperclip';
   const curve = new THREE.CatmullRomCurve3(centerline, false, 'centripetal');

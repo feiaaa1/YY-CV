@@ -33,9 +33,19 @@ describe('procedural model contracts', () => {
 
     expect(clip.children).toHaveLength(3);
     expect(size.y).toBeGreaterThan(size.x * 1.2);
-    expect((wire.geometry as THREE.TubeGeometry).parameters.radius).toBeCloseTo(0.007);
     expect(material.metalness).toBeGreaterThan(0.85);
     expect(material.roughness).toBeLessThan(0.3);
+    clip.traverse((object) => object instanceof THREE.Mesh && object.geometry.dispose());
+  });
+
+  test('paperclip overall size can be reduced without changing its wire gauge', () => {
+    const clip = createPaperclip('#9BBFE0', 0.2);
+    const wire = clip.getObjectByName('wire') as THREE.Mesh;
+
+    expect(clip.scale.x).toBeCloseTo(0.2);
+    expect(clip.scale.y).toBeCloseTo(0.2);
+    expect(clip.scale.z).toBeCloseTo(0.2);
+    expect((wire.geometry as THREE.TubeGeometry).parameters.radius).toBeCloseTo(0.035);
     clip.traverse((object) => object instanceof THREE.Mesh && object.geometry.dispose());
   });
 

@@ -260,7 +260,7 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
 
   const pennants = createPennants(); pennants.position.set(0, 1.08, 0.28);
   addPart(parts, rig, pennants);
-  const paperclip = createPaperclip('#D8D19B', 1, 0.005); paperclip.position.set(4.15, 1.65, 0.35); paperclip.rotation.z = -0.42;
+  const paperclip = createPaperclip('#D8D19B', 0.2, 0.025); paperclip.position.set(4.15, 1.65, 0.35); paperclip.rotation.z = -0.42;
   addPart(parts, rig, paperclip);
 
   const cloudField = createCloudField();
