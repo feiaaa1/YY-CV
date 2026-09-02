@@ -31,7 +31,7 @@ const centerline = [
   new THREE.Vector3(-1, -0.05, 0),
 ];
 
-export function createPaperclip(color: string, scale = 1, radius = 0.035, widthScale = 0.2): THREE.Group {
+export function createPaperclip(color: string, scale = 1, radius = 0.035, widthScale = 0.62): THREE.Group {
   const group = new THREE.Group();
   group.name = 'paperclip';
   const curve = new THREE.CatmullRomCurve3(centerline, false, 'centripetal');

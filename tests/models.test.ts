@@ -39,10 +39,10 @@ describe('procedural model contracts', () => {
   });
 
   test('paperclip overall size can be reduced without changing its wire gauge', () => {
-    const clip = createPaperclip('#9BBFE0', 1, 0.035, 0.2);
+    const clip = createPaperclip('#9BBFE0', 1, 0.035, 0.62);
     const wire = clip.getObjectByName('wire') as THREE.Mesh;
 
-    expect(clip.scale.x).toBeCloseTo(0.2);
+    expect(clip.scale.x).toBeCloseTo(0.62);
     expect(clip.scale.y).toBeCloseTo(1);
     expect(clip.scale.z).toBeCloseTo(1);
     expect((wire.geometry as THREE.TubeGeometry).parameters.radius).toBeCloseTo(0.035);
