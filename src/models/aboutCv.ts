@@ -332,13 +332,13 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   contactPanel.position.set(2.91, -0.46, 0.132);
   root.add(contactPanel); parts.set(contactPanel.name, contactPanel);
 
-  const brownClip = createPaperclip('#5D3A37', 0.92, 0.035, 0.62);
+  const brownClip = createPaperclip('#5D3A37', 0.74, 0.035, 0.62);
   brownClip.name = 'brown-paperclip';
   brownClip.position.set(-2.45, 2.38, 0.48);
   brownClip.rotation.z = 0.035;
   root.add(brownClip); parts.set(brownClip.name, brownClip);
 
-  const redClip = createPaperclip('#F03759', 1.08, 0.035, 0.62);
+  const redClip = createPaperclip('#F03759', 0.86, 0.035, 0.62);
   redClip.name = 'red-paperclip';
   redClip.position.set(3.25, 2.43, 0.35);
   redClip.rotation.z = -0.035;
