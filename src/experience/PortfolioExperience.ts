@@ -95,11 +95,13 @@ export class PortfolioExperience {
       background: '#F4EF62',
       foreground: '#17213A',
       align: 'center',
-      width: 700,
-      height: 300,
+      width: 1200,
+      height: 500,
+      titleScale: 0.2,
+      subtitleScale: 0.075,
     });
     this.directoryHeader.position.set(-4.85, 3.48, -0.15);
-    this.directoryHeader.rotation.z = -0.22;
+    this.directoryHeader.rotation.z = 0;
     this.directoryGroup.add(this.directoryHeader);
 
     const collageVariants: CollageVariant[] = ['sport', 'business', 'technology', 'culture', 'cinema'];
@@ -116,8 +118,10 @@ export class PortfolioExperience {
       background: '#2B82EE',
       foreground: '#FFF8E8',
       align: 'center',
-      width: 800,
-      height: 300,
+      width: 1400,
+      height: 500,
+      titleScale: 0.2,
+      subtitleScale: 0.075,
     });
     this.finishTag.name = 'finish-tag';
     this.finishTag.userData.action = 'finish';
