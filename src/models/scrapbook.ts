@@ -383,15 +383,6 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   pageCounter.position.set(0, 3.18, -0.02);
   root.add(pageCounter); parts.set(pageCounter.name, pageCounter);
 
-  const previousArrow = makeRoundControl('previous-arrow', '←', 'previous-project');
-  previousArrow.position.set(-0.55, -3.15, 0.05);
-  previousArrow.visible = false;
-  root.add(previousArrow); parts.set(previousArrow.name, previousArrow); targets.push(previousArrow);
-
-  const nextArrow = makeRoundControl('next-arrow', '→', 'next-project');
-  nextArrow.position.set(0.55, -3.15, 0.05);
-  root.add(nextArrow); parts.set(nextArrow.name, nextArrow); targets.push(nextArrow);
-
   const closeTag = makeRoundControl('close-tag', '×', 'close-detail');
   closeTag.position.set(1.65, -3.15, 0.05);
   root.add(closeTag); parts.set(closeTag.name, closeTag); targets.push(closeTag);
@@ -429,8 +420,6 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     updateTextPanel(pageCounter, {
       title: pageLabel, background: '#414D6A', foreground: '#FFFDF2', align: 'center', width: 900, height: 250,
     });
-    previousArrow.visible = index > 0;
-    nextArrow.visible = index < pages.length - 1;
     leftPage.userData.action = index > 0 ? 'previous-project' : undefined;
     rightPage.userData.action = index < pages.length - 1 ? 'next-project' : undefined;
   };

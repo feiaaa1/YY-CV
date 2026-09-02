@@ -382,9 +382,11 @@ describe('procedural model contracts', () => {
       'inactive-page-0', 'inactive-page-1', 'inactive-page-2', 'inactive-page-3',
       'left-page-pivot', 'right-page-pivot', 'active-left-page', 'active-right-page',
       'center-binding', 'left-collage', 'right-collage', 'page-counter',
-      'previous-arrow', 'next-arrow', 'close-tag',
+      'close-tag',
     ]));
-    expect(scrapbook.interactiveTargets.some((target) => target.userData.action === 'previous-project')).toBe(true);
+    expect(scrapbook.parts.has('previous-arrow')).toBe(false);
+    expect(scrapbook.parts.has('next-arrow')).toBe(false);
+    expect(scrapbook.interactiveTargets.some((target) => target.userData.action === 'previous-project')).toBe(false);
     expect(scrapbook.interactiveTargets.some((target) => target.userData.action === 'next-project')).toBe(true);
     expect(scrapbook.root.userData.projectIndex).toBe(0);
 
@@ -392,13 +394,9 @@ describe('procedural model contracts', () => {
     expect(scrapbook.root.userData.projectIndex).toBe(4);
     expect(scrapbook.parts.get('page-counter')?.userData.pageLabel).toBe('5 / 5 Pages');
     expect(scrapbook.parts.get('active-left-page')?.userData.pageId).toBe('thanks');
-    expect(scrapbook.parts.get('previous-arrow')?.visible).toBe(true);
-    expect(scrapbook.parts.get('next-arrow')?.visible).toBe(false);
 
     await scrapbook.actions.setProject(-3);
     expect(scrapbook.root.userData.projectIndex).toBe(0);
-    expect(scrapbook.parts.get('previous-arrow')?.visible).toBe(false);
-    expect(scrapbook.parts.get('next-arrow')?.visible).toBe(true);
     scrapbook.dispose();
   });
 
@@ -417,14 +415,10 @@ describe('procedural model contracts', () => {
     scrapbook.dispose();
   });
 
-  test('scrapbook arrow graphics are large enough to remain legible', () => {
+  test('scrapbook omits separate arrow graphics', () => {
     const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
-    const label = scrapbook.parts.get('previous-arrow')?.getObjectByName('previous-arrow-label') as THREE.Mesh | undefined;
-    expect(label).toBeDefined();
-    label?.geometry.computeBoundingBox();
-    const size = label?.geometry.boundingBox?.getSize(new THREE.Vector3());
-    expect(size?.x).toBeGreaterThanOrEqual(0.7);
-    expect(size?.y).toBeGreaterThanOrEqual(0.55);
+    expect(scrapbook.parts.has('previous-arrow')).toBe(false);
+    expect(scrapbook.parts.has('next-arrow')).toBe(false);
     scrapbook.dispose();
   });
 
