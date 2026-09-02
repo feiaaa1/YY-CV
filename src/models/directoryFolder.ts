@@ -164,15 +164,15 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
   targets.push(frontPocket);
 
   const outsideLabel = makeTextPanel(2.45, 0.48, 0.035, {
-    title: category.title.en,
-    subtitle: category.description.zh,
+    title: category.description.zh,
+    subtitle: category.title.zh,
     background: '#2B8AF0',
     foreground: '#FFF9E7',
     align: 'center',
     width: 950,
     height: 260,
-    titleScale: 0.16,
-    subtitleScale: 0.055,
+    titleScale: 0.2,
+    subtitleScale: 0.07,
     transparentBackground: true,
   });
   outsideLabel.name = 'outside-label';
