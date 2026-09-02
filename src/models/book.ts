@@ -72,6 +72,9 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
   });
   turningPage.name = 'turning-page';
   turningPage.visible = false;
+  turningPage.renderOrder = 4;
+  const turningMaterials = Array.isArray(turningPage.material) ? turningPage.material : [turningPage.material];
+  turningMaterials.forEach((material) => { material.side = THREE.DoubleSide; });
   turningPivot.add(turningPage);
   root.add(turningPivot);
   parts.set(turningPivot.name, turningPivot);
