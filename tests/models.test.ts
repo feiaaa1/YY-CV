@@ -33,6 +33,7 @@ describe('procedural model contracts', () => {
 
     expect(clip.children).toHaveLength(3);
     expect(size.y).toBeGreaterThan(size.x * 1.2);
+    expect((wire.geometry as THREE.TubeGeometry).parameters.radius).toBeCloseTo(0.007);
     expect(material.metalness).toBeGreaterThan(0.85);
     expect(material.roughness).toBeLessThan(0.3);
     clip.traverse((object) => object instanceof THREE.Mesh && object.geometry.dispose());
