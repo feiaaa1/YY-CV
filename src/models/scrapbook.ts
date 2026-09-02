@@ -377,7 +377,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   root.add(pageCounter); parts.set(pageCounter.name, pageCounter);
 
   const closeTag = makeRoundControl('close-tag', '关闭', 'close-detail');
-  closeTag.position.set(3.15, -2.75, 0.12);
+  // Keep the close control outside the lower-right edge of the book.
+  closeTag.position.set(4.85, -3.45, 0.16);
   root.add(closeTag); parts.set(closeTag.name, closeTag); targets.push(closeTag);
 
   const hoverRig = new THREE.Group();

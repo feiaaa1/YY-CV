@@ -428,8 +428,8 @@ describe('procedural model contracts', () => {
     const label = closeTag.getObjectByName('close-tag-label') as THREE.Mesh;
     const materials = Array.isArray(label.material) ? label.material : [label.material];
 
-    expect(closeTag.position.x).toBeGreaterThan(3);
-    expect(closeTag.position.y).toBeLessThan(-2.5);
+    expect(closeTag.position.x).toBeGreaterThan(4.5);
+    expect(closeTag.position.y).toBeLessThan(-3.1);
     expect(materials.some((material) => material instanceof THREE.MeshStandardMaterial && material.color.getHex() === 0x414d6a)).toBe(true);
     scrapbook.dispose();
   });
