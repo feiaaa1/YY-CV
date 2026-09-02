@@ -7,8 +7,15 @@ describe('portfolio content', () => {
     for (const category of portfolioContent.categories) {
       expect(category.title.zh.length).toBeGreaterThan(0);
       expect(category.title.en.length).toBeGreaterThan(0);
+      expect(category.description.zh.length).toBeGreaterThan(0);
       expect(category.projects).toHaveLength(3);
     }
+  });
+
+  test('uses the requested descriptions in directory order', () => {
+    expect(portfolioContent.categories.map(({ description }) => description.zh)).toEqual([
+      '个人介绍', '校园经历', '实习经历', '专业技能', '项目作品',
+    ]);
   });
 
   test('maps the agreed categories to the correct detail presentation', () => {

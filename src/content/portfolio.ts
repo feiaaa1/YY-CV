@@ -23,6 +23,7 @@ const categories: Category[] = [
   {
     id: 'brand',
     title: { zh: '品牌视觉', en: 'Brand Identity' },
+    description: { zh: '个人介绍', en: 'About Me' },
     shortTitle: 'BRAND',
     color: '#77A3FF',
     secondaryColor: '#F7A8FF',
@@ -36,6 +37,7 @@ const categories: Category[] = [
   {
     id: 'ui-web',
     title: { zh: 'UI / 网页', en: 'UI & Web' },
+    description: { zh: '校园经历', en: 'Campus Experience' },
     shortTitle: 'UI / WEB',
     color: '#77E3A0',
     secondaryColor: '#C6FF72',
@@ -76,6 +78,7 @@ const categories: Category[] = [
   {
     id: 'poster-editorial',
     title: { zh: '海报编辑', en: 'Poster & Editorial' },
+    description: { zh: '实习经历', en: 'Internship Experience' },
     shortTitle: 'POSTER',
     color: '#FF815B',
     secondaryColor: '#FFD169',
@@ -119,6 +122,7 @@ const categories: Category[] = [
   {
     id: 'illustration',
     title: { zh: '插画', en: 'Illustration' },
+    description: { zh: '专业技能', en: 'Professional Skills' },
     shortTitle: 'ILLUST.',
     color: '#FFEE57',
     secondaryColor: '#FF8CB6',
@@ -132,6 +136,7 @@ const categories: Category[] = [
   {
     id: 'motion-3d',
     title: { zh: '动态 / 3D', en: 'Motion & 3D' },
+    description: { zh: '项目作品', en: 'Selected Projects' },
     shortTitle: 'MOTION',
     color: '#F5A4E7',
     secondaryColor: '#77E4F4',

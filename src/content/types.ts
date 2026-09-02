@@ -37,6 +37,7 @@ export type JourneyExperience = {
 export type Category = {
   id: string;
   title: LocalizedText;
+  description: LocalizedText;
   shortTitle: string;
   color: string;
   secondaryColor: string;

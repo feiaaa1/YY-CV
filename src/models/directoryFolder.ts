@@ -165,7 +165,7 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
 
   const outsideLabel = makeTextPanel(2.45, 0.48, 0.035, {
     title: category.title.en,
-    subtitle: category.title.zh,
+    subtitle: category.description.zh,
     background: '#2B8AF0',
     foreground: '#FFF9E7',
     align: 'center',
