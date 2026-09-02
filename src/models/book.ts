@@ -59,6 +59,24 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
   rightPivot.add(rightPage);
   targets.push(rightPage);
 
+  const turningPivot = new THREE.Group();
+  turningPivot.name = 'turning-page-pivot';
+  turningPivot.position.z = 0.2;
+  const turningPage = makeTextPanel(3.5, 4.08, 0.11, {
+    title: current.title.en,
+    subtitle: current.summary.en,
+    kicker: 'SELECTED PROJECT',
+    background: '#FFFDF7',
+    foreground: '#20222A',
+    accent: current.accent,
+  });
+  turningPage.name = 'turning-page';
+  turningPage.visible = false;
+  turningPivot.add(turningPage);
+  root.add(turningPivot);
+  parts.set(turningPivot.name, turningPivot);
+  parts.set(turningPage.name, turningPage);
+
   const leftEdge = makeExtrudedMesh(roundedRectShape(3.38, 0.16, 0.04), '#E9E3D9', 0.12, 0.025);
   leftEdge.name = 'page-edge-left';
   leftEdge.position.set(-1.78, -2.04, 0.03);
@@ -136,14 +154,25 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
       return;
     }
     const forward = (normalized - previous + category.projects.length) % category.projects.length === 1;
-    const pivot = forward ? rightPivot : leftPivot;
-    const openAngle = forward ? 0 : 0;
-    const turnAngle = forward ? -1.05 : 1.05;
+    const previousItem = category.projects[previous]!;
+    updateTextPanel(turningPage, {
+      title: forward ? previousItem.title.en : previousItem.title.zh,
+      subtitle: forward ? previousItem.summary.en : previousItem.summary.zh,
+      kicker: `${category.title.en} · ${previousItem.year}`,
+      background: '#FFFDF7', foreground: '#20222A', accent: previousItem.accent,
+    });
+    turningPage.position.x = forward ? 1.78 : -1.78;
+    turningPage.visible = true;
+    turningPivot.rotation.y = 0;
+    const turnAngle = forward ? -Math.PI : Math.PI;
     return timelines.run((timeline) => {
       timeline
-        .to(pivot.rotation, { y: turnAngle, duration: 0.28, ease: 'power2.in' }, 0)
-        .call(() => updateProjectContent(normalized), [], 0.28)
-        .to(pivot.rotation, { y: openAngle, duration: 0.42, ease: 'power2.out' }, 0.28);
+        .to(turningPivot.rotation, { y: turnAngle, duration: 0.72, ease: 'power2.inOut' }, 0)
+        .call(() => {
+          updateProjectContent(normalized);
+          turningPage.visible = false;
+          turningPivot.rotation.y = 0;
+        }, [], 0.73);
     });
   };
 
