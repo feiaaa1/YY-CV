@@ -422,7 +422,7 @@ describe('procedural model contracts', () => {
     scrapbook.dispose();
   });
 
-  test('scrapbook close control is transparent and placed at the lower right', () => {
+  test('scrapbook close control uses white background and black text', () => {
     const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
     const closeTag = scrapbook.parts.get('close-tag')!;
     const label = closeTag.getObjectByName('close-tag-label') as THREE.Mesh;
@@ -430,7 +430,7 @@ describe('procedural model contracts', () => {
 
     expect(closeTag.position.x).toBeGreaterThan(4.5);
     expect(closeTag.position.y).toBeLessThan(-3.1);
-    expect(materials.some((material) => material instanceof THREE.MeshStandardMaterial && material.color.getHex() === 0x414d6a)).toBe(true);
+    expect(materials.some((material) => material instanceof THREE.MeshStandardMaterial && material.color.getHex() === 0xfffdf6)).toBe(true);
     scrapbook.dispose();
   });
 
