@@ -121,12 +121,30 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
   parts.set('close-tag', closeTag);
   targets.push(closeTag);
 
-  const setProject = (index: number) => {
-    const normalized = (index + category.projects.length) % category.projects.length;
-    root.userData.projectIndex = normalized;
+  const updateProjectContent = (normalized: number): void => {
     const item = category.projects[normalized]!;
     updateTextPanel(leftPage, { title: item.title.zh, subtitle: item.summary.zh, kicker: `${category.title.en} · ${item.year}`, background: '#FFFDF7', foreground: '#20222A', accent: item.accent });
     updateTextPanel(rightPage, { title: item.title.en, subtitle: `${item.tags.join('  /  ')}  ${item.summary.en}`, kicker: `PROJECT ${normalized + 1} / ${category.projects.length}`, background: '#FFFDF7', foreground: '#20222A', accent: item.accent });
+  };
+
+  const setProject = (index: number) => {
+    const normalized = (index + category.projects.length) % category.projects.length;
+    const previous = root.userData.projectIndex as number;
+    root.userData.projectIndex = normalized;
+    if (normalized === previous || root.userData.open !== true) {
+      updateProjectContent(normalized);
+      return;
+    }
+    const forward = (normalized - previous + category.projects.length) % category.projects.length === 1;
+    const pivot = forward ? rightPivot : leftPivot;
+    const openAngle = forward ? 0 : 0;
+    const turnAngle = forward ? -1.05 : 1.05;
+    return timelines.run((timeline) => {
+      timeline
+        .to(pivot.rotation, { y: turnAngle, duration: 0.28, ease: 'power2.in' }, 0)
+        .call(() => updateProjectContent(normalized), [], 0.28)
+        .to(pivot.rotation, { y: openAngle, duration: 0.42, ease: 'power2.out' }, 0.28);
+    });
   };
 
   const handle = createHandle(root, parts, targets, {

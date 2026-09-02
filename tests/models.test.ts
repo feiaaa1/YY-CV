@@ -499,6 +499,10 @@ describe('procedural model contracts', () => {
     expect(journey.root.userData.selectedStation).toBe(2);
     expect(popup?.visible).toBe(true);
     expect(popup?.userData.experienceId).toBe('internship-03');
+    const popupGeometry = (popup as THREE.Mesh).geometry as THREE.BoxGeometry;
+    expect(popupGeometry.parameters.width).toBeCloseTo(8.3);
+    expect(popupGeometry.parameters.height).toBeCloseTo(4.4);
+    expect(popup?.position.z).toBeGreaterThan(1);
     expect(selectedStation?.scale.x).toBeGreaterThan(otherStation?.scale.x ?? 0);
     expect(popup?.scale.x).toBeLessThan(0.2);
     await reveal;
