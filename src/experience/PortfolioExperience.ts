@@ -90,7 +90,8 @@ export class PortfolioExperience {
     this.directoryGroup.visible = false;
     this.scene.add(this.directoryGroup);
     this.directoryHeader = makeTextPanel(1.42, 0.62, 0.08, {
-      title: '#30ua',
+      title: '作品目录',
+      subtitle: '选择分类',
       background: '#F4EF62',
       foreground: '#17213A',
       align: 'center',
@@ -110,8 +111,8 @@ export class PortfolioExperience {
     }
 
     this.finishTag = makeTextPanel(2.05, 0.62, 0.1, {
-      title: 'EN   ○   ×',
-      subtitle: 'FINISH',
+      title: '完成浏览',
+      subtitle: '结束',
       background: '#2B82EE',
       foreground: '#FFF8E8',
       align: 'center',
