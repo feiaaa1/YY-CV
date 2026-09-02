@@ -247,11 +247,12 @@ function makeAbilityCard(label: string, color: string, glyph: string): THREE.Mes
 function createPaperclip(color: string, scale = 1): THREE.Group {
   const group = new THREE.Group();
   const points = [
-    new THREE.Vector3(-0.26, -0.45, 0), new THREE.Vector3(-0.34, 0.08, 0),
-    new THREE.Vector3(-0.18, 0.48, 0), new THREE.Vector3(0.16, 0.47, 0),
-    new THREE.Vector3(0.31, 0.14, 0), new THREE.Vector3(0.25, -0.47, 0),
-    new THREE.Vector3(0.03, -0.47, 0), new THREE.Vector3(-0.02, 0.17, 0),
-    new THREE.Vector3(0.10, 0.27, 0), new THREE.Vector3(0.20, 0.16, 0),
+    new THREE.Vector3(-0.22, -0.46, 0), new THREE.Vector3(-0.30, 0.14, 0),
+    new THREE.Vector3(-0.16, 0.46, 0), new THREE.Vector3(0.16, 0.46, 0),
+    new THREE.Vector3(0.30, 0.14, 0), new THREE.Vector3(0.22, -0.46, 0),
+    new THREE.Vector3(0.06, -0.46, 0), new THREE.Vector3(0.10, 0.12, 0),
+    new THREE.Vector3(0.06, 0.27, 0), new THREE.Vector3(-0.08, 0.27, 0),
+    new THREE.Vector3(-0.13, 0.14, 0), new THREE.Vector3(-0.10, -0.42, 0),
   ];
   const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
   const geometry = new THREE.TubeGeometry(curve, 48, 0.035, 10, false);
@@ -353,13 +354,13 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   const brownClip = createPaperclip('#5D3A37', 0.92);
   brownClip.name = 'brown-paperclip';
   brownClip.position.set(-2.45, 2.38, 0.48);
-  brownClip.rotation.z = 0.12;
+  brownClip.rotation.z = 0.035;
   root.add(brownClip); parts.set(brownClip.name, brownClip);
 
   const redClip = createPaperclip('#F03759', 1.08);
   redClip.name = 'red-paperclip';
   redClip.position.set(3.25, 2.43, 0.35);
-  redClip.rotation.z = -0.42;
+  redClip.rotation.z = -0.035;
   root.add(redClip); parts.set(redClip.name, redClip);
 
   const websiteButton = makeTextPanel(1.86, 0.55, 0.065, {
