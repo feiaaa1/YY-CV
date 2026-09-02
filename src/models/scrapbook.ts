@@ -243,9 +243,9 @@ function makeRoundControl(id: string, label: string, action: string): THREE.Grou
   const group = new THREE.Group();
   group.name = id;
   group.userData.action = action;
-  const text = makeTextPanel(0.72, 0.58, 0.02, {
-    title: label, background: '#FFFDF6', foreground: '#11131C', align: 'center', transparentBackground: true,
-    titleScale: 0.27, width: 520, height: 420,
+  const text = makeTextPanel(0.92, 0.48, 0.025, {
+    title: label, background: '#414D6A', foreground: '#FFFDF2', align: 'center',
+    titleScale: 0.2, width: 700, height: 360,
   });
   text.name = `${id}-label`;
   text.position.z = 0.075;

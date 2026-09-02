@@ -430,7 +430,7 @@ describe('procedural model contracts', () => {
 
     expect(closeTag.position.x).toBeGreaterThan(3);
     expect(closeTag.position.y).toBeLessThan(-2.5);
-    expect(materials.some((material) => material instanceof THREE.MeshStandardMaterial && material.opacity === 0)).toBe(true);
+    expect(materials.some((material) => material instanceof THREE.MeshStandardMaterial && material.color.getHex() === 0x414d6a)).toBe(true);
     scrapbook.dispose();
   });
 
