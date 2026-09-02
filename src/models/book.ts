@@ -137,7 +137,10 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
     }),
     close: () => timelines.run((timeline) => {
       root.userData.open = false;
-      timeline.to(leftPivot.rotation, { y: 1.18, duration: 0.55 }, 0).to(rightPivot.rotation, { y: -1.18, duration: 0.55 }, 0);
+      timeline
+        .to(leftPivot.rotation, { y: 1.18, duration: 0.55 }, 0)
+        .to(rightPivot.rotation, { y: -1.18, duration: 0.55 }, 0)
+        .to(root.scale, { x: 0.02, y: 0.02, z: 0.02, duration: 0.5, ease: 'power2.in' }, 0.12);
     }),
   });
   const baseDispose = handle.dispose;

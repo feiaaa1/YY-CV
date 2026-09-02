@@ -343,6 +343,16 @@ describe('procedural model contracts', () => {
     ticket.dispose();
   });
 
+  test('book closes the entire composition, not only its page pivots', async () => {
+    const book = createOpenBookModel(portfolioContent.categories[3]!, 0, true);
+    book.root.scale.setScalar(1);
+    await book.actions.close();
+    expect(book.root.scale.x).toBeCloseTo(0.02);
+    expect(book.root.scale.y).toBeCloseTo(0.02);
+    expect(book.root.scale.z).toBeCloseTo(0.02);
+    book.dispose();
+  });
+
   test('about CV is a fixed layered paper composition with independent clips and cards', async () => {
     const about = createAboutCvModel(portfolioContent.categories[0]!, true);
 
