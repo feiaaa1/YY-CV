@@ -134,43 +134,37 @@ function makeAboutTexture(): THREE.Texture {
 }
 
 function makePortraitTexture(): THREE.Texture {
-  return createCanvasTexture(620, 790, '#FFD9E3', (context, width, height) => {
-    context.strokeStyle = '#ED4E68';
-    context.lineWidth = 5;
-    context.beginPath(); context.arc(64, 90, 30, 0.2, 2.7); context.stroke();
-    context.fillStyle = '#4B3224';
-    context.beginPath(); context.ellipse(width * 0.5, height * 0.38, 176, 206, 0, 0, Math.PI * 2); context.fill();
-    context.fillStyle = '#F5C4A7';
-    context.beginPath(); context.ellipse(width * 0.5, height * 0.38, 129, 152, 0, 0, Math.PI * 2); context.fill();
-    context.fillStyle = '#4B3224';
-    for (let index = 0; index < 6; index += 1) {
-      context.beginPath();
-      context.moveTo(200 + index * 45, 165);
-      context.lineTo(225 + index * 42, 285);
-      context.lineTo(260 + index * 26, 165);
-      context.fill();
-    }
-    context.fillStyle = '#272A2E';
-    context.beginPath(); context.ellipse(257, 315, 28, 37, 0, 0, Math.PI * 2); context.fill();
-    context.beginPath(); context.ellipse(365, 315, 28, 37, 0, 0, Math.PI * 2); context.fill();
-    context.fillStyle = '#FFF';
-    context.beginPath(); context.arc(247, 302, 8, 0, Math.PI * 2); context.fill();
-    context.beginPath(); context.arc(355, 302, 8, 0, Math.PI * 2); context.fill();
-    context.strokeStyle = '#9E5B54'; context.lineWidth = 4;
-    context.beginPath(); context.arc(311, 382, 26, 0.25, 2.85); context.stroke();
-    context.fillStyle = 'rgba(243,105,111,.38)';
-    context.beginPath(); context.ellipse(225, 366, 33, 17, 0, 0, Math.PI * 2); context.fill();
-    context.beginPath(); context.ellipse(398, 366, 33, 17, 0, 0, Math.PI * 2); context.fill();
-    context.fillStyle = '#57B8D2';
-    context.beginPath(); context.moveTo(138, height); context.lineTo(191, 510); context.lineTo(429, 510); context.lineTo(485, height); context.fill();
-    context.fillStyle = '#F2D04A';
-    context.beginPath(); context.arc(310, 620, 61, 0, Math.PI * 2); context.fill();
-    drawHandText(context, '✦', 70, 190, 34, 700, '#ED4E68');
-    drawHandText(context, '+', 525, 210, 42, 700, '#ED4E68');
-    context.fillStyle = '#FFFDF8'; context.fillRect(0, height - 112, width, 112);
-    drawHandText(context, 'NAME: YOUR NAME', 34, height - 61, 29, 800);
+  if (typeof document === 'undefined') return fallbackTexture('#FFD9E3');
+  const width = 620;
+  const height = 790;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return fallbackTexture('#FFD9E3');
+  context.fillStyle = '#FFD9E3';
+  context.fillRect(0, 0, width, height);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  const paint = (image: HTMLImageElement): void => {
+    context.fillStyle = '#FFD9E3';
+    context.fillRect(0, 0, width, height);
+    const imageHeight = height - 112;
+    const ratio = Math.min(width / image.naturalWidth, imageHeight / image.naturalHeight);
+    const drawWidth = image.naturalWidth * ratio;
+    const drawHeight = image.naturalHeight * ratio;
+    context.drawImage(image, (width - drawWidth) / 2, 0, drawWidth, drawHeight);
+    context.fillStyle = '#FFFDF8';
+    context.fillRect(0, height - 112, width, 112);
+    drawHandText(context, 'NAME: GINNY HAN', 34, height - 61, 29, 800);
     drawHandText(context, 'ROLE: VISUAL DESIGNER', 34, height - 20, 27, 650);
-  });
+    texture.needsUpdate = true;
+  };
+  const image = new Image();
+  image.onload = () => paint(image);
+  image.src = '/ginny-han.png';
+  return texture;
 }
 
 function makeSoftwareTexture(): THREE.Texture {

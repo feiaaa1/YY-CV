@@ -363,6 +363,7 @@ describe('procedural model contracts', () => {
     about.dispose();
   });
 
+
   test('scrapbook exposes five bounded page states and spine-anchored navigation', async () => {
     const category = portfolioContent.categories[1]!;
     const scrapbook = createScrapbookModel(category, true);
