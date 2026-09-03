@@ -21,6 +21,19 @@ export type ScrapbookPage = {
   kicker: string;
   palette: [string, string, string];
   motif: 'intro' | 'mobile' | 'editorial' | 'process' | 'contact';
+  leftContent?: {
+    mainText?: string;
+    bullets?: string[];
+    photo?: { label: string; subtitle: string };
+    note?: { title: string; subtitle: string };
+  };
+  rightContent?: {
+    noteTitle?: string;
+    bullets?: string[];
+    decorativeText?: string[];
+    photo?: { label: string; subtitle: string };
+    sticker?: { title: string; subtitle: string };
+  };
 };
 
 export type JourneyExperience = {

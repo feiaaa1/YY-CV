@@ -78,12 +78,34 @@ function drawPaperPattern(context: CanvasRenderingContext2D, width: number, heig
   context.globalAlpha = 1;
 }
 
+function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const metrics = context.measureText(testLine);
+    if (metrics.width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
 function makeSpreadTexture(page: ScrapbookPage, side: 'left' | 'right'): THREE.Texture {
   const background = side === 'left' ? '#F1EFE5' : '#E8E3CF';
   return makeCanvasTexture(1200, 1420, background, (context, width, height) => {
     drawPaperPattern(context, width, height, page, side);
     if (side === 'left') {
+      // Header with kicker
       drawText(context, page.kicker, 76, 132, 44, '#696A73', 750);
+
+      // Large title with stroke
       const titleWords = page.title.en.toUpperCase().split(' ');
       titleWords.forEach((word, index) => {
         context.lineWidth = 11;
@@ -93,43 +115,69 @@ function makeSpreadTexture(page: ScrapbookPage, side: 'left' | 'right'): THREE.T
         context.strokeText(word, 84, 330 + index * 170);
         context.fillText(word, 84, 330 + index * 170);
       });
+
+      // Content box with main info
       context.fillStyle = page.palette[1];
       context.globalAlpha = 0.32;
       context.beginPath(); context.roundRect(72, 780, 640, 175, 46); context.fill();
       context.globalAlpha = 1;
       drawText(context, page.title.zh, 118, 850, 54, '#42434A', 800);
       drawText(context, page.subtitle.zh, 118, 920, 30, '#51525B', 540);
-      drawText(context, page.subtitle.en, 86, 1110, 29, '#575661', 540);
+
+      // Custom left content if provided
+      if (page.leftContent?.mainText) {
+        context.font = '540 29px "Arial Rounded MT Bold", "PingFang SC", sans-serif';
+        const lines = wrapText(context, page.leftContent.mainText, 600);
+        lines.slice(0, 2).forEach((line, index) => {
+          drawText(context, line, 86, 1040 + index * 40, 29, '#575661', 540);
+        });
+      } else {
+        drawText(context, page.subtitle.en, 86, 1110, 29, '#575661', 540);
+      }
+
+      // Page number
       drawText(context, `PAGE ${page.id.toUpperCase()}`, 86, 1330, 25, '#7D7880', 650);
+
+      // Decorative curve
       context.strokeStyle = '#EF7190'; context.lineWidth = 8;
       context.beginPath(); context.moveTo(90, 1005); context.bezierCurveTo(180, 940, 270, 1080, 360, 1004); context.stroke();
     } else {
-      drawText(context, 'NOTE', 90, 160, 94, '#7B8290', 900);
+      // Right page - NOTE section
+      drawText(context, page.rightContent?.noteTitle || 'NOTE', 90, 160, 94, '#7B8290', 900);
       drawText(context, page.kicker.toLowerCase(), 90, 250, 50, page.palette[2], 700);
-      const bullets = page.motif === 'intro'
-        ? ['visual stories', 'playful systems', 'digital craft', 'soft colors']
-        : page.motif === 'mobile'
-          ? ['user journeys', 'map discovery', 'mobile components', 'prototype tests']
-          : page.motif === 'editorial'
-            ? ['modular grid', 'reading rhythm', 'responsive type', 'content archive']
-            : page.motif === 'process'
-              ? ['research', 'wireframes', 'design tokens', 'usability checks']
-              : ['say hello', 'new projects', 'collaboration', 'thank you'];
+
+      // Bullets - use custom or defaults
+      const bullets = page.rightContent?.bullets || (
+        page.motif === 'intro'
+          ? ['visual stories', 'playful systems', 'digital craft', 'soft colors']
+          : page.motif === 'mobile'
+            ? ['user journeys', 'map discovery', 'mobile components', 'prototype tests']
+            : page.motif === 'editorial'
+              ? ['modular grid', 'reading rhythm', 'responsive type', 'content archive']
+              : page.motif === 'process'
+                ? ['research', 'wireframes', 'design tokens', 'usability checks']
+                : ['say hello', 'new projects', 'collaboration', 'thank you']
+      );
       bullets.forEach((bullet, index) => {
         drawText(context, `${index + 1}. ${bullet}`, 100, 390 + index * 92, 42, '#414148', 620);
         context.strokeStyle = index % 2 ? page.palette[2] : page.palette[1];
         context.lineWidth = 5;
         context.beginPath(); context.moveTo(92, 410 + index * 92); context.lineTo(560, 410 + index * 92); context.stroke();
       });
+
+      // Decorative letter boxes
       context.save();
       context.translate(900, 720);
       context.rotate(-0.08);
-      ['S', 'O', 'C', 'I', 'A', 'L', 'S'].forEach((letter, index) => {
+      const decorativeText = page.rightContent?.decorativeText || ['S', 'O', 'C', 'I', 'A', 'L', 'S'];
+      decorativeText.forEach((letter, index) => {
         context.fillStyle = [page.palette[1], page.palette[2], '#E9CB74'][index % 3]!;
         context.fillRect((index % 2) * 118, index * 82, 100, 72);
         drawText(context, letter, 50 + (index % 2) * 118, 57 + index * 82, 56, '#3A3C52', 900, 'center');
       });
       context.restore();
+
+      // Bottom info box
       context.fillStyle = page.palette[1]; context.globalAlpha = 0.38;
       context.beginPath(); context.roundRect(112, 890, 530, 330, 34); context.fill();
       context.globalAlpha = 1;
