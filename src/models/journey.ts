@@ -324,17 +324,17 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
     return materials;
   });
 
-  const popup = makeTextPanel(4.15, 2.2, 0.13, {
+  const popup = makeTextPanel(8.3, 4.4, 0.13, {
     title: experiences[0]!.company.zh,
     subtitle: `${experiences[0]!.role.zh}\n${experiences[0]!.period} · ${experiences[0]!.location.zh}\n${experiences[0]!.summary.zh}`,
     kicker: 'INTERNSHIP STOP 01', background: '#FFF8E9', foreground: '#4B5773', accent: experiences[0]!.accent,
-    width: 1300, height: 700, titleScale: 0.72,
+    width: 1800, height: 1000, titleScale: 0.58,
   });
-  popup.name = 'experience-popup'; popup.position.set(0, 0.15, 0.82); popup.visible = false;
+  popup.name = 'experience-popup'; popup.position.set(0, 0.05, 1.2); popup.visible = false;
   addPart(parts, rig, popup);
 
   const popupClose = makeTag('返回', '#F5D965', 'close-journey-popup');
-  popupClose.name = 'popup-close'; popupClose.position.set(1.32, -0.78, 0.12); popup.add(popupClose);
+  popupClose.name = 'popup-close'; popupClose.position.set(3.15, -1.72, 0.12); popup.add(popupClose);
   parts.set(popupClose.name, popupClose); targets.push(popupClose);
 
   const closeTag = makeTag('关闭', '#8ED7E2', 'close-detail');
@@ -367,13 +367,13 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
     popup.userData.experienceId = experience.id;
     popup.visible = true;
     popup.scale.setScalar(0.04);
-    popup.position.x = THREE.MathUtils.clamp(stationPositions[index]!.x * 0.22, -0.75, 0.75);
+    popup.position.x = THREE.MathUtils.clamp(stationPositions[index]!.x * 0.08, -0.3, 0.3);
     updateTextPanel(popup, {
       title: experience.company.zh,
       subtitle: `${experience.role.zh}\n${experience.period} · ${experience.location.zh}\n${experience.summary.zh}`,
       kicker: `INTERNSHIP STOP ${String(index + 1).padStart(2, '0')}`,
       background: '#FFF8E9', foreground: '#4B5773', accent: experience.accent,
-      width: 1300, height: 700, titleScale: 0.72,
+      width: 1800, height: 1000, titleScale: 0.58,
     });
     stations.forEach((station, stationIndex) => {
       const selected = stationIndex === index;
