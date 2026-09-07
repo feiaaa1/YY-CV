@@ -353,6 +353,45 @@ describe('procedural model contracts', () => {
     book.dispose();
   });
 
+  test('book turns one physical leaf with independent front and back project content', async () => {
+    const category = portfolioContent.categories[3]!;
+    const book = createOpenBookModel(category, 0, true);
+    const turningPage = book.parts.get('turning-page')!;
+    const body = book.parts.get('turning-page-body') as THREE.Mesh;
+    const front = book.parts.get('turning-page-front') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+    const back = book.parts.get('turning-page-back') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+
+    expect((body.geometry as THREE.BoxGeometry).parameters.depth).toBeGreaterThan(0);
+    expect(front.material.map).not.toBe(back.material.map);
+    expect(back.rotation.y).toBeCloseTo(Math.PI);
+
+    await book.actions.open();
+    const forwardTurn = book.actions.setProject(1);
+    const rightPivot = book.parts.get('right-page')!;
+    const rightPage = rightPivot.children[0] as THREE.Mesh;
+    expect(turningPage.position.x).toBeCloseTo(rightPivot.position.x + rightPage.position.x);
+    expect(
+      book.parts.get('turning-page-pivot')!.position.z + front.position.z,
+    ).toBeCloseTo((rightPage.geometry as THREE.BoxGeometry).parameters.depth / 2, 2);
+    await forwardTurn;
+
+    expect(turningPage.userData.frontProjectIndex).toBe(0);
+    expect(turningPage.userData.backProjectIndex).toBe(1);
+    expect(turningPage.userData.frontContent.title).toBe(category.projects[0]!.title.en);
+    expect(turningPage.userData.backContent.title).toBe(category.projects[1]!.title.zh);
+    expect(turningPage.visible).toBe(false);
+    expect(book.root.userData.projectIndex).toBe(1);
+
+    const backwardTurn = book.actions.setProject(0);
+    const leftPivot = book.parts.get('left-page')!;
+    const leftPage = leftPivot.children[0]!;
+    expect(turningPage.position.x).toBeCloseTo(leftPivot.position.x + leftPage.position.x);
+    await backwardTurn;
+    expect(turningPage.userData.frontContent.title).toBe(category.projects[1]!.title.zh);
+    expect(turningPage.userData.backContent.title).toBe(category.projects[0]!.title.en);
+    book.dispose();
+  });
+
   test('about CV is a fixed layered paper composition with independent clips and cards', async () => {
     const about = createAboutCvModel(portfolioContent.categories[0]!, true);
 

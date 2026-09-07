@@ -3,6 +3,86 @@ import type { Category } from '../content/types';
 import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
 import { createTimelineController } from '../animation/timelines';
+import { createTextTexture, type TextTextureOptions } from '../three/textures';
+
+type BookPageSide = 'left' | 'right';
+
+function projectPageOptions(category: Category, index: number, side: BookPageSide): TextTextureOptions {
+  const project = category.projects[index]!;
+  return side === 'left'
+    ? {
+        title: project.title.zh,
+        subtitle: project.summary.zh,
+        kicker: `${category.title.en} · ${project.year}`,
+        background: '#FFFDF7',
+        foreground: '#20222A',
+        accent: project.accent,
+      }
+    : {
+        title: project.title.en,
+        subtitle: `${project.tags.join('  /  ')}  ${project.summary.en}`,
+        kicker: `PROJECT ${index + 1} / ${category.projects.length}`,
+        background: '#FFFDF7',
+        foreground: '#20222A',
+        accent: project.accent,
+      };
+}
+
+function createTurningLeaf(frontOptions: TextTextureOptions, backOptions: TextTextureOptions): THREE.Group {
+  const leaf = new THREE.Group();
+  leaf.name = 'turning-page';
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(3.5, 4.08, 0.075),
+    new THREE.MeshStandardMaterial({ color: '#EEE8DC', roughness: 0.94 }),
+  );
+  body.name = 'turning-page-body';
+  body.castShadow = true;
+  body.receiveShadow = true;
+  leaf.add(body);
+
+  const faceGeometry = new THREE.PlaneGeometry(3.47, 4.05);
+  const front = new THREE.Mesh(
+    faceGeometry,
+    new THREE.MeshBasicMaterial({ map: createTextTexture(frontOptions), toneMapped: false }),
+  );
+  front.name = 'turning-page-front';
+  front.position.z = 0.039;
+  front.renderOrder = 4;
+  leaf.add(front);
+
+  const back = new THREE.Mesh(
+    faceGeometry.clone(),
+    new THREE.MeshBasicMaterial({ map: createTextTexture(backOptions), toneMapped: false }),
+  );
+  back.name = 'turning-page-back';
+  back.position.z = -0.039;
+  back.rotation.y = Math.PI;
+  back.renderOrder = 4;
+  leaf.add(back);
+
+  leaf.userData.body = body;
+  leaf.userData.frontPrint = front;
+  leaf.userData.backPrint = back;
+  return leaf;
+}
+
+function updateTurningLeaf(
+  leaf: THREE.Group,
+  frontOptions: TextTextureOptions,
+  backOptions: TextTextureOptions,
+): void {
+  const front = leaf.userData.frontPrint as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  const back = leaf.userData.backPrint as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  front.material.map?.dispose();
+  back.material.map?.dispose();
+  front.material.map = createTextTexture(frontOptions);
+  back.material.map = createTextTexture(backOptions);
+  front.material.needsUpdate = true;
+  back.material.needsUpdate = true;
+  leaf.userData.frontContent = frontOptions;
+  leaf.userData.backContent = backOptions;
+}
 
 export function createOpenBookModel(category: Category, projectIndex: number, reducedMotion = false): SculptModelHandle {
   const root = new THREE.Group();
@@ -32,28 +112,13 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
   parts.set('left-page', leftPivot);
   parts.set('right-page', rightPivot);
 
-  const current = category.projects[projectIndex]!;
-  const leftPage = makeTextPanel(3.5, 4.08, 0.11, {
-    title: current.title.zh,
-    subtitle: current.summary.zh,
-    kicker: `${category.title.en} · ${current.year}`,
-    background: '#FFFDF7',
-    foreground: '#20222A',
-    accent: current.accent,
-  });
+  const leftPage = makeTextPanel(3.5, 4.08, 0.11, projectPageOptions(category, projectIndex, 'left'));
   leftPage.position.x = -1.78;
   leftPage.userData.action = 'previous-project';
   leftPivot.add(leftPage);
   targets.push(leftPage);
 
-  const rightPage = makeTextPanel(3.5, 4.08, 0.11, {
-    title: current.title.en,
-    subtitle: `${current.tags.join('  /  ')}\n${current.summary.en}`,
-    kicker: 'SELECTED PROJECT',
-    background: '#FFFDF7',
-    foreground: '#20222A',
-    accent: current.accent,
-  });
+  const rightPage = makeTextPanel(3.5, 4.08, 0.11, projectPageOptions(category, projectIndex, 'right'));
   rightPage.position.x = 1.78;
   rightPage.userData.action = 'next-project';
   rightPivot.add(rightPage);
@@ -61,24 +126,22 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
 
   const turningPivot = new THREE.Group();
   turningPivot.name = 'turning-page-pivot';
-  turningPivot.position.z = 0.2;
-  const turningPage = makeTextPanel(3.5, 4.08, 0.11, {
-    title: current.title.en,
-    subtitle: current.summary.en,
-    kicker: 'SELECTED PROJECT',
-    background: '#FFFDF7',
-    foreground: '#20222A',
-    accent: current.accent,
-  });
-  turningPage.name = 'turning-page';
+  // Keep the printed face 0.002 above the resting page face. A larger lift
+  // creates a visible perspective jump when the temporary leaf is hidden.
+  turningPivot.position.z = 0.018;
+  const initialNextIndex = (projectIndex + 1) % category.projects.length;
+  const turningPage = createTurningLeaf(
+    projectPageOptions(category, projectIndex, 'right'),
+    projectPageOptions(category, initialNextIndex, 'left'),
+  );
   turningPage.visible = false;
-  turningPage.renderOrder = 4;
-  const turningMaterials = Array.isArray(turningPage.material) ? turningPage.material : [turningPage.material];
-  turningMaterials.forEach((material) => { material.side = THREE.DoubleSide; });
   turningPivot.add(turningPage);
   root.add(turningPivot);
   parts.set(turningPivot.name, turningPivot);
   parts.set(turningPage.name, turningPage);
+  parts.set('turning-page-body', turningPage.userData.body as THREE.Mesh);
+  parts.set('turning-page-front', turningPage.userData.frontPrint as THREE.Mesh);
+  parts.set('turning-page-back', turningPage.userData.backPrint as THREE.Mesh);
 
   const leftEdge = makeExtrudedMesh(roundedRectShape(3.38, 0.16, 0.04), '#E9E3D9', 0.12, 0.025);
   leftEdge.name = 'page-edge-left';
@@ -143,10 +206,12 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
   targets.push(closeTag);
 
   const updateProjectContent = (normalized: number): void => {
-    const item = category.projects[normalized]!;
-    updateTextPanel(leftPage, { title: item.title.zh, subtitle: item.summary.zh, kicker: `${category.title.en} · ${item.year}`, background: '#FFFDF7', foreground: '#20222A', accent: item.accent });
-    updateTextPanel(rightPage, { title: item.title.en, subtitle: `${item.tags.join('  /  ')}  ${item.summary.en}`, kicker: `PROJECT ${normalized + 1} / ${category.projects.length}`, background: '#FFFDF7', foreground: '#20222A', accent: item.accent });
+    updateTextPanel(leftPage, projectPageOptions(category, normalized, 'left'));
+    updateTextPanel(rightPage, projectPageOptions(category, normalized, 'right'));
   };
+
+  const leftPageCenterX = leftPivot.position.x + leftPage.position.x;
+  const rightPageCenterX = rightPivot.position.x + rightPage.position.x;
 
   const setProject = (index: number) => {
     const normalized = (index + category.projects.length) % category.projects.length;
@@ -157,25 +222,36 @@ export function createOpenBookModel(category: Category, projectIndex: number, re
       return;
     }
     const forward = (normalized - previous + category.projects.length) % category.projects.length === 1;
-    const previousItem = category.projects[previous]!;
-    updateTextPanel(turningPage, {
-      title: forward ? previousItem.title.en : previousItem.title.zh,
-      subtitle: forward ? previousItem.summary.en : previousItem.summary.zh,
-      kicker: `${category.title.en} · ${previousItem.year}`,
-      background: '#FFFDF7', foreground: '#20222A', accent: previousItem.accent,
-    });
-    turningPage.position.x = forward ? 1.78 : -1.78;
+    const frontSide: BookPageSide = forward ? 'right' : 'left';
+    const backSide: BookPageSide = forward ? 'left' : 'right';
+    updateTurningLeaf(
+      turningPage,
+      projectPageOptions(category, previous, frontSide),
+      projectPageOptions(category, normalized, backSide),
+    );
+    turningPage.userData.frontProjectIndex = previous;
+    turningPage.userData.backProjectIndex = normalized;
+    turningPage.position.x = forward ? rightPageCenterX : leftPageCenterX;
     turningPage.visible = true;
     turningPivot.rotation.y = 0;
+
+    // Prepare the page revealed as the leaf lifts. The destination page under
+    // the back face is updated only after that face has completely covered it.
+    if (forward) updateTextPanel(rightPage, projectPageOptions(category, normalized, 'right'));
+    else updateTextPanel(leftPage, projectPageOptions(category, normalized, 'left'));
+
     const turnAngle = forward ? -Math.PI : Math.PI;
     return timelines.run((timeline) => {
       timeline
-        .to(turningPivot.rotation, { y: turnAngle, duration: 0.72, ease: 'power2.inOut' }, 0)
+        .to(turningPivot.rotation, { y: turnAngle, duration: 0.64, ease: 'power2.inOut' }, 0)
         .call(() => {
-          updateProjectContent(normalized);
+          if (forward) updateTextPanel(leftPage, projectPageOptions(category, normalized, 'left'));
+          else updateTextPanel(rightPage, projectPageOptions(category, normalized, 'right'));
+        }, [], 0.64)
+        .call(() => {
           turningPage.visible = false;
           turningPivot.rotation.y = 0;
-        }, [], 0.73);
+        }, [], 0.67);
     });
   };
 
