@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { portfolioContent } from '../src/content/portfolio';
+import { aboutProfile } from '../src/content/profile';
 
 describe('portfolio content', () => {
   test('contains five bilingual categories with three projects each', () => {
@@ -26,6 +27,15 @@ describe('portfolio content', () => {
       ['illustration', 'book'],
       ['motion-3d', 'ticket'],
     ]);
+  });
+
+  test('uses the supplied personal introduction content', () => {
+    expect(portfolioContent.owner).toEqual({ zh: '韩婧仪', en: 'Ginny' });
+    expect(portfolioContent.contact).toBe('17335581033');
+    expect(aboutProfile.portraitSrc).toBe('/ginny-han-profile.jpeg');
+    expect(aboutProfile.skills).toHaveLength(11);
+    expect(aboutProfile.tags).toHaveLength(7);
+    expect(aboutProfile.tags).toContain('王者最强王者20星');
   });
 
   test('provides four placeholder internship stops for the journey folder', () => {

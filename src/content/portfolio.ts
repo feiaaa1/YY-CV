@@ -1,4 +1,5 @@
 import type { Category, PortfolioContent } from './types';
+import { aboutProfile } from './profile';
 
 const project = (
   categoryId: string,
@@ -216,8 +217,8 @@ const categories: Category[] = [
 
 export const portfolioContent: PortfolioContent = {
   title: { zh: '作品集', en: 'PORTFOLIO' },
-  owner: { zh: '你的名字', en: 'YOUR NAME' },
+  owner: aboutProfile.name,
   role: { zh: '视觉与交互设计', en: 'VISUAL & INTERACTION DESIGN' },
-  contact: 'hello@example.com',
+  contact: aboutProfile.contact,
   categories,
 };

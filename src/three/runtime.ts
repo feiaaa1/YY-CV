@@ -2,10 +2,12 @@ import * as THREE from 'three';
 
 export type SculptModelActions = {
   setHovered(hovered: boolean): void;
+  setHoveredTarget(target: THREE.Object3D | null): void;
   setReducedMotion(reduced: boolean): void;
   open(): Promise<void> | void;
   close(): Promise<void> | void;
   setProject(index: number): Promise<void> | void;
+  toggleExpanded(): Promise<void> | void;
   explode(amount: number): void;
   reset(): void;
 };
@@ -55,10 +57,12 @@ export function createHandle(
 
   const actions: SculptModelActions = {
     setHovered: modelActions.setHovered ?? (() => undefined),
+    setHoveredTarget: modelActions.setHoveredTarget ?? (() => undefined),
     setReducedMotion: modelActions.setReducedMotion ?? ((reduced) => { root.userData.reducedMotion = reduced; }),
     open: modelActions.open ?? (() => undefined),
     close: modelActions.close ?? (() => undefined),
     setProject: modelActions.setProject ?? ((index) => { root.userData.projectIndex = index; }),
+    toggleExpanded: modelActions.toggleExpanded ?? (() => undefined),
     explode: modelActions.explode ?? ((amount) => {
       let index = 0;
       for (const [id, part] of parts) {

@@ -220,10 +220,12 @@ export class PortfolioExperience {
     const owner = hit ? this.targetOwners.get(hit) ?? null : null;
     if (owner) owner.root.userData.hoverPointer = { x: this.pointer.x, y: this.pointer.y };
     if (owner !== this.hoveredHandle) {
+      this.hoveredHandle?.actions.setHoveredTarget(null);
       this.hoveredHandle?.actions.setHovered(false);
       owner?.actions.setHovered(true);
       this.hoveredHandle = owner;
     }
+    owner?.actions.setHoveredTarget(hit);
     this.renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
   };
 
@@ -387,6 +389,10 @@ export class PortfolioExperience {
   }
 
   private activateTarget(target: THREE.Object3D): void {
+    if (target.userData.action === 'toggle-about-expanded') {
+      this.targetOwners.get(target)?.actions.toggleExpanded();
+      return;
+    }
     if (target.userData.action === 'visit-website') {
       this.announce('网站链接尚未配置，替换个人资料后即可启用。', true);
       return;
@@ -704,6 +710,7 @@ export class PortfolioExperience {
     for (const handle of this.modelHandles) handle.actions.setReducedMotion(reduced);
     if (!reduced) return;
     this.resetGestureState();
+    this.hoveredHandle?.actions.setHoveredTarget(null);
     this.hoveredHandle?.actions.setHovered(false);
     this.hoveredHandle = null;
     this.pointer.set(2, 2);

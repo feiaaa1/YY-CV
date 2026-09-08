@@ -1,7 +1,9 @@
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 import type { Category } from '../content/types';
+import { aboutProfile } from '../content/profile';
 import { createTimelineController } from '../animation/timelines';
-import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh } from '../three/geometry';
+import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
@@ -56,6 +58,28 @@ function drawHandText(
   context.fillStyle = color;
   context.font = `${weight} ${size}px "Arial Narrow", "PingFang SC", sans-serif`;
   context.fillText(text, x, y);
+}
+
+function drawPill(
+  context: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  background: string,
+  foreground = '#26242A',
+  fontSize = 30,
+): void {
+  context.fillStyle = background;
+  context.beginPath();
+  context.roundRect(x, y, width, height, height / 2);
+  context.fill();
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  drawHandText(context, label, x + width / 2, y + height / 2 + 1, fontSize, 750, foreground);
+  context.textAlign = 'left';
+  context.textBaseline = 'alphabetic';
 }
 
 function makeRuledBackground(): THREE.Texture {
@@ -113,19 +137,15 @@ function makeAboutTexture(): THREE.Texture {
     context.lineWidth = 5;
     context.beginPath(); context.arc(392, 66, 23, 0, Math.PI * 2); context.stroke();
     context.beginPath(); context.moveTo(415, 28); context.lineTo(428, 15); context.moveTo(421, 34); context.lineTo(438, 39); context.stroke();
-    const lines = [
-      'HI! MY NAME IS YOUR NAME. I HAVE A BACHELOR’S DEGREE IN VISUAL',
-      'COMMUNICATION DESIGN. I’M CURRENTLY BASED IN YOUR CITY.',
-      'I AM CURIOUS, PASSIONATE AND WILLING TO LEARN. MY PASSION IS',
-      'DIGITAL ILLUSTRATION, PHOTOGRAPHY AND VIBRANT VISUAL STORIES.',
-      'I ENJOY TURNING COMPLEX IDEAS INTO CLEAR, PLAYFUL EXPERIENCES.',
-    ];
-    lines.forEach((line, index) => drawHandText(context, line, 30, 155 + index * 67, 38, 650));
+    drawHandText(context, `你好，我是${aboutProfile.name.zh}`, 30, 188, 58, 800);
+    drawHandText(context, aboutProfile.name.en.toUpperCase(), 30, 266, 70, 800, '#FF4E68');
+    drawHandText(context, '个人介绍  /  PERSONAL PROFILE', 32, 340, 35, 650, '#4C4950');
+    drawPill(context, 'ESTJ', 32, 384, 174, 70, '#F5C657', '#30313A', 31);
+    drawPill(context, '超级大E人', 226, 384, 252, 70, '#9ED8E5', '#30313A', 30);
+    drawPill(context, '调解大师', 498, 384, 226, 70, '#B7D864', '#30313A', 30);
     context.strokeStyle = '#FF4E68';
     context.lineWidth = 5;
-    context.beginPath(); context.ellipse(279, 145, 111, 28, -0.02, 0, Math.PI * 2); context.stroke();
-    context.beginPath(); context.ellipse(1030, 213, 122, 28, 0.02, 0, Math.PI * 2); context.stroke();
-    context.beginPath(); context.moveTo(615, 338); context.lineTo(863, 338); context.stroke();
+    context.beginPath(); context.ellipse(297, 169, 270, 42, -0.02, 0, Math.PI * 2); context.stroke();
     context.fillStyle = '#FF4E68';
     context.font = '700 34px sans-serif';
     context.fillText('✦', width - 90, 82);
@@ -153,77 +173,70 @@ function makePortraitTexture(): THREE.Texture {
     const ratio = Math.min(width / image.naturalWidth, imageHeight / image.naturalHeight);
     const drawWidth = image.naturalWidth * ratio;
     const drawHeight = image.naturalHeight * ratio;
-    context.drawImage(image, (width - drawWidth) / 2, 0, drawWidth, drawHeight);
+    context.drawImage(image, (width - drawWidth) / 2, (imageHeight - drawHeight) / 2, drawWidth, drawHeight);
     context.fillStyle = '#FFFDF8';
     context.fillRect(0, height - 112, width, 112);
-    drawHandText(context, 'NAME: GINNY HAN', 34, height - 61, 29, 800);
-    drawHandText(context, 'ROLE: VISUAL DESIGNER', 34, height - 20, 27, 650);
+    drawHandText(context, `NAME: ${aboutProfile.name.zh} / ${aboutProfile.name.en.toUpperCase()}`, 30, height - 61, 27, 800);
+    drawHandText(context, `WECHAT / TEL: ${aboutProfile.contact}`, 30, height - 20, 24, 650);
     texture.needsUpdate = true;
   };
   const image = new Image();
   image.onload = () => paint(image);
-  image.src = '/ginny-han.png';
+  image.src = aboutProfile.portraitSrc;
   return texture;
 }
 
 function makeSoftwareTexture(): THREE.Texture {
   return createCanvasTexture(520, 760, '#FFFFFF', (context, width) => {
     context.textAlign = 'center';
-    drawHandText(context, 'SOFTWARE', width / 2, 80, 53, 800);
-    drawHandText(context, 'SKILLS', width / 2, 142, 53, 800);
-    const items = [
-      { x: 135, y: 305, label: 'Ps', color: '#19233D' },
-      { x: 365, y: 305, label: 'Ai', color: '#5B2A18' },
-      { x: 135, y: 520, label: 'Pr', color: '#492148' },
-      { x: 365, y: 520, label: 'Fg', color: '#F06A80' },
-    ];
-    items.forEach((item, index) => {
-      context.strokeStyle = '#FF506B'; context.lineWidth = 5;
-      context.beginPath(); context.arc(item.x, item.y, 75, 0, Math.PI * 2); context.stroke();
-      drawHandText(context, item.label, item.x, item.y + 22, 70, 800, item.color);
-      drawHandText(context, `${index + 1}.`, item.x - 90, item.y + 14, 33, 700, '#FF506B');
+    drawHandText(context, 'TOOL BOX', width / 2, 72, 51, 800);
+    drawHandText(context, '技能', width / 2, 123, 31, 700, '#FF506B');
+    const colors = ['#DDE8FF', '#F8D3DE', '#E1EDB8', '#F9E4A4'];
+    aboutProfile.skills.forEach((label, index) => {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      const singleLastItem = index === aboutProfile.skills.length - 1;
+      const pillWidth = singleLastItem ? 226 : 202;
+      const x = singleLastItem ? (width - pillWidth) / 2 : 48 + column * 222;
+      drawPill(context, label, x, 160 + row * 91, pillWidth, 62, colors[index % colors.length]!, '#26242A', 27);
     });
     context.textAlign = 'left';
   });
 }
 
-function makeExperienceTexture(): THREE.Texture {
+function makePersonalityTexture(): THREE.Texture {
   return createCanvasTexture(1050, 690, '#FFFFFF', (context) => {
-    drawHandText(context, 'WORK EXPERIENCE', 24, 74, 64, 800);
-    const rows = [
-      ['MAJI BRANDING AGENCY', 'JANUARY – JUNE 2021', 'GRAPHIC DESIGN INTERN. SOCIAL MEDIA, CAMPAIGN AND STORY DESIGN.'],
-      ['KONNICHIWA GROUP', 'MARCH 2022 – JULY 2023', 'GRAPHIC DESIGNER. HANDLED BRANDING AND SOCIAL CAMPAIGNS.'],
-      ['TINY AND FLUFF', 'AUGUST 2023 – PRESENT', 'FREELANCE ILLUSTRATION, COMMISSIONS AND PERSONAL PROJECTS.'],
-      ['PROLINK LOGISTICS', 'MARCH 2022 – OCTOBER 2022', 'FREELANCE GRAPHIC DESIGN AND CLIENT SOCIAL MEDIA.'],
-    ];
-    rows.forEach((row, index) => {
-      const y = 145 + index * 132;
-      drawHandText(context, row[0]!, 28, y, 36, 800);
-      drawHandText(context, row[1]!, 520, y - 2, 20, 650, '#55545A');
-      drawHandText(context, row[2]!, 31, y + 49, 24, 550, '#3A393D');
-      context.strokeStyle = '#FF506B'; context.lineWidth = 4;
-      context.beginPath(); context.ellipse(206, y - 11, 180, 30, -0.03, 0, Math.PI * 2); context.stroke();
-      context.strokeStyle = 'rgba(65,65,70,.28)'; context.lineWidth = 2;
-      context.beginPath(); context.moveTo(22, y + 86); context.lineTo(1020, y + 86); context.stroke();
+    drawHandText(context, 'PERSONAL TAGS', 30, 76, 60, 800);
+    drawHandText(context, '我的关键词', 32, 125, 30, 700, '#FF506B');
+    const layouts = [
+      [30, 170, 330], [380, 170, 235], [635, 170, 160],
+      [30, 270, 280], [330, 270, 410],
+      [30, 370, 250], [300, 370, 280],
+    ] as const;
+    const colors = ['#F8D3DE', '#F9E4A4', '#DDE8FF', '#E1EDB8', '#CDEBF0', '#F2D8F5', '#FFD9C4'];
+    aboutProfile.tags.forEach((label, index) => {
+      const [x, y, pillWidth] = layouts[index]!;
+      drawPill(context, label, x, y, pillWidth, 72, colors[index]!, '#29272D', label.length > 8 ? 28 : 31);
     });
+    drawHandText(context, '# 热情  # 爱好  # 沟通  # 行动派', 34, 535, 31, 700, '#5E5A62');
+    context.strokeStyle = '#FF506B'; context.lineWidth = 5;
+    context.beginPath(); context.moveTo(32, 575); context.lineTo(975, 575); context.stroke();
+    drawHandText(context, 'GINNY', 35, 640, 48, 800, '#FF506B');
   });
 }
 
-function makeContactTexture(category: Category): THREE.Texture {
+function makeContactTexture(): THREE.Texture {
   return createCanvasTexture(740, 610, '#FFFFFF', (context) => {
     drawHandText(context, 'CONTACT ME', 35, 85, 67, 800);
     drawHandText(context, '✦', 620, 84, 38, 800, '#FF506B');
-    const lines = [
-      'YOURNAME@EMAIL.COM',
-      '+00 123 456 789',
-      'BEHANCE.NET/YOURNAME',
-      'LINKEDIN.COM/IN/YOURNAME',
-      `PORTFOLIO / ${category.title.en.toUpperCase()}`,
-    ];
-    lines.forEach((line, index) => drawHandText(context, line, 35, 160 + index * 70, 31, index < 2 ? 750 : 560));
+    drawHandText(context, '微信 / 电话', 38, 178, 40, 750, '#454249');
+    drawHandText(context, aboutProfile.contact, 38, 260, 55, 800, '#FF506B');
+    drawPill(context, 'WECHAT', 38, 320, 230, 68, '#DDE8FF', '#2E3442', 30);
+    drawPill(context, 'MOBILE', 286, 320, 230, 68, '#E1EDB8', '#2E3442', 30);
     context.strokeStyle = '#FF506B'; context.lineWidth = 5;
-    context.beginPath(); context.moveTo(35, 246); context.lineTo(380, 246); context.stroke();
-    drawHandText(context, 'CHECK OUT MY OTHER WORK', 35, 535, 25, 500, '#AAA5A7');
+    context.beginPath(); context.moveTo(38, 426); context.lineTo(665, 426); context.stroke();
+    drawHandText(context, `${aboutProfile.name.zh}  /  ${aboutProfile.name.en.toUpperCase()}`, 38, 505, 36, 800);
+    drawHandText(context, 'KEEP IN TOUCH', 38, 555, 26, 650, '#8A858D');
   });
 }
 
@@ -238,11 +251,39 @@ function makeAbilityCard(label: string, color: string, glyph: string): THREE.Mes
   return makePaperPanel(0.82, 1.03, 0.055, color, texture);
 }
 
+function makeExpandHint(): THREE.Mesh {
+  const texture = createCanvasTexture(420, 300, 'rgba(255,255,255,0)', (context) => {
+    context.strokeStyle = '#FF506B';
+    context.lineWidth = 10;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.beginPath();
+    context.moveTo(46, 52);
+    context.bezierCurveTo(172, 34, 310, 76, 286, 214);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(286, 214);
+    context.lineTo(238, 171);
+    context.moveTo(286, 214);
+    context.lineTo(307, 151);
+    context.stroke();
+    context.fillStyle = '#FF506B';
+    context.beginPath(); context.arc(42, 53, 9, 0, Math.PI * 2); context.fill();
+  });
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.96, 0.68),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }),
+  );
+  mesh.userData.hintStyle = 'hand-drawn-arrow';
+  return mesh;
+}
+
 export function createAboutCvModel(category: Category, reducedMotion = false): SculptModelHandle {
   const root = new THREE.Group();
   root.name = `about-cv-${category.id}`;
   root.userData.open = false;
   root.userData.projectIndex = 0;
+  root.userData.expanded = false;
   root.userData.reducedMotion = reducedMotion;
   const timelines = createTimelineController({ reducedMotion: () => root.userData.reducedMotion === true });
   const parts = new Map<string, THREE.Object3D>([['root', root]]);
@@ -288,77 +329,197 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   aboutPrint.position.set(1.2, 1.4, 0.095);
   root.add(aboutPrint); parts.set(aboutPrint.name, aboutPrint);
 
-  const portraitCard = makePaperPanel(2.16, 3.32, 0.085, '#FFF7F4', makePortraitTexture());
+  const portraitCard = makePaperPanel(2.44, 3.11, 0.085, '#FFF7F4', makePortraitTexture());
   portraitCard.name = 'portrait-card';
-  portraitCard.position.set(-3.02, 0.25, 0.29);
+  portraitCard.position.set(-3.02, 1.12, 0.29);
   portraitCard.rotation.z = 0.055;
-  root.add(portraitCard); parts.set(portraitCard.name, portraitCard);
+  portraitCard.userData.action = 'about-hover';
+  portraitCard.userData.imageFit = 'contain';
+  root.add(portraitCard); parts.set(portraitCard.name, portraitCard); targets.push(portraitCard);
 
   const abilities = new THREE.Group();
   abilities.name = 'abilities-cards';
-  abilities.position.set(0.57, -0.03, 0.2);
+  abilities.position.set(0.57, 0.58, 0.2);
   const abilityData = [
-    ['ILLUSTRATION', '#B7D864', '✎'], ['GRAPHIC DESIGN', '#F5C657', '▣'], ['PHOTOGRAPHY', '#72C9D7', '◉'],
+    ['ESTJ', '#B7D864', 'E'], ['超级大E人', '#F5C657', '!'], ['调解大师', '#72C9D7', '✓'],
   ];
   abilityData.forEach(([label, color, glyph], index) => {
     const card = makeAbilityCard(label!, color!, glyph!);
     card.name = `ability-card-${index}`;
+    card.userData.action = 'about-hover';
     card.position.set((index - 1) * 0.83, 0, index * 0.018);
     card.rotation.z = (index - 1) * 0.055;
     abilities.add(card);
     parts.set(card.name, card);
+    targets.push(card);
   });
   root.add(abilities); parts.set(abilities.name, abilities);
 
   const softwarePanel = makePaperPanel(1.44, 2.38, 0.02, '#FFFFFF', makeSoftwareTexture());
   softwarePanel.name = 'software-panel';
-  softwarePanel.position.set(-1.95, -1.23, 0.105);
-  root.add(softwarePanel); parts.set(softwarePanel.name, softwarePanel);
+  softwarePanel.userData.action = 'about-hover';
+  softwarePanel.position.set(-2.62, -1.78, 0.105);
+  root.add(softwarePanel); parts.set(softwarePanel.name, softwarePanel); targets.push(softwarePanel);
 
-  const experiencePanel = makePaperPanel(4.08, 2.32, 0.02, '#FFFFFF', makeExperienceTexture());
-  experiencePanel.name = 'experience-panel';
-  experiencePanel.position.set(0.75, -1.28, 0.104);
-  root.add(experiencePanel); parts.set(experiencePanel.name, experiencePanel);
+  const personalityPanel = makePaperPanel(4.08, 2.32, 0.02, '#FFFFFF', makePersonalityTexture());
+  personalityPanel.name = 'personality-panel';
+  personalityPanel.userData.action = 'about-hover';
+  personalityPanel.position.set(0.75, -1.28, 0.104);
+  root.add(personalityPanel); parts.set(personalityPanel.name, personalityPanel); targets.push(personalityPanel);
 
-  const contactPanel = makePaperPanel(2.18, 1.76, 0.022, '#FFFFFF', makeContactTexture(category));
+  const contactPanel = makePaperPanel(2.18, 1.76, 0.022, '#FFFFFF', makeContactTexture());
   contactPanel.name = 'contact-panel';
+  contactPanel.userData.action = 'about-hover';
   contactPanel.position.set(2.91, -0.46, 0.132);
-  root.add(contactPanel); parts.set(contactPanel.name, contactPanel);
+  root.add(contactPanel); parts.set(contactPanel.name, contactPanel); targets.push(contactPanel);
 
-  const websiteButton = makeTextPanel(1.86, 0.55, 0.065, {
-    title: '↗  WEBSITE / COMING SOON', background: '#F7F4EA', foreground: '#202126', align: 'center', width: 900, height: 260,
+  const profileStrip = makeTextPanel(1.86, 0.55, 0.065, {
+    title: '个人介绍 / GINNY', background: '#F7F4EA', foreground: '#202126', align: 'center', width: 900, height: 260,
   });
-  websiteButton.name = 'website-button';
-  websiteButton.userData.action = 'visit-website';
-  websiteButton.position.set(-3.35, -2.44, 0.44);
-  root.add(websiteButton); parts.set(websiteButton.name, websiteButton); targets.push(websiteButton);
+  profileStrip.name = 'profile-strip';
+  profileStrip.position.set(-3.35, -2.44, 0.44);
+  root.add(profileStrip); parts.set(profileStrip.name, profileStrip);
 
   const controls = new THREE.Group();
   controls.name = 'corner-controls';
   controls.position.set(3.77, -2.44, 0.43);
-  const expand = makeTag('展开', '#EFFF69', 'none');
+  const expand = makeTag('展开', '#EFFF69', 'toggle-about-expanded');
   expand.name = 'expand-control';
-  expand.scale.setScalar(0.52);
-  expand.position.x = -0.52;
-  controls.add(expand); parts.set(expand.name, expand);
+  expand.userData.label = '展开';
+  expand.scale.setScalar(0.82);
+  expand.position.x = -0.74;
+  controls.add(expand); parts.set(expand.name, expand); targets.push(expand);
   const closeTag = makeTag('关闭', '#F7A8FF', 'close-detail');
   closeTag.name = 'close-tag';
-  closeTag.scale.setScalar(0.52);
-  closeTag.position.x = 0.34;
+  closeTag.userData.label = '关闭';
+  closeTag.scale.setScalar(0.82);
+  closeTag.position.x = 0.66;
   controls.add(closeTag); parts.set(closeTag.name, closeTag); targets.push(closeTag);
   root.add(controls); parts.set(controls.name, controls);
 
+  const expandHint = makeExpandHint();
+  expandHint.name = 'expand-hint';
+  expandHint.position.set(-1.13, 0.52, 0.03);
+  controls.add(expandHint); parts.set(expandHint.name, expandHint);
+
   const finalTransforms = new Map<THREE.Object3D, { y: number; z: number; rotationZ: number }>();
-  for (const part of [mainBoard, tabBack, aboutPrint, portraitCard, abilities, softwarePanel, experiencePanel, contactPanel, websiteButton, controls]) {
+  for (const part of [mainBoard, tabBack, aboutPrint, portraitCard, abilities, softwarePanel, personalityPanel, contactPanel, profileStrip, controls]) {
     finalTransforms.set(part, { y: part.position.y, z: part.position.z, rotationZ: part.rotation.z });
   }
 
+  const layoutParts = [tabBack, aboutPrint, portraitCard, abilities, softwarePanel, personalityPanel, contactPanel, profileStrip, controls];
+  const compactLayout = new Map(layoutParts.map((part) => [part, {
+    position: part.position.clone(),
+    scale: part.scale.clone(),
+  }]));
+  const expandedLayout = new Map<THREE.Object3D, { position: THREE.Vector3; scale: number }>([
+    [tabBack, { position: new THREE.Vector3(-3.55, 2.65, -0.18), scale: 0.8 }],
+    [aboutPrint, { position: new THREE.Vector3(0, 2.15, 0.12), scale: 1 }],
+    [portraitCard, { position: new THREE.Vector3(-3.12, -0.22, 0.3), scale: 0.9 }],
+    [softwarePanel, { position: new THREE.Vector3(-1.15, 0.1, 0.2), scale: 0.9 }],
+    [abilities, { position: new THREE.Vector3(1.05, 0.65, 0.25), scale: 0.9 }],
+    [contactPanel, { position: new THREE.Vector3(3.25, 0.1, 0.22), scale: 0.9 }],
+    [personalityPanel, { position: new THREE.Vector3(1.35, -1.72, 0.2), scale: 0.85 }],
+    [profileStrip, { position: new THREE.Vector3(-3.35, -2.75, 0.26), scale: 1 }],
+    [controls, { position: new THREE.Vector3(3.48, -3.42, 0.3), scale: 0.75 }],
+  ]);
+
+  const setExpandLabel = (label: '展开' | '收起'): void => {
+    expand.userData.label = label;
+    updateTextPanel(expand, {
+      title: label,
+      background: '#EFFF69',
+      foreground: '#172033',
+      align: 'center',
+      width: 640,
+      height: 240,
+      titleScale: 0.2,
+    });
+  };
+
   let hovered = false;
+  let hoveredTarget: THREE.Object3D | null = null;
+  root.userData.layoutTransitioning = false;
+  let hintTween: gsap.core.Timeline | null = null;
+  const showExpandHint = (visible: boolean) => {
+    hintTween?.kill();
+    expandHint.visible = true;
+    const targetScale = visible ? 1 : 0.01;
+    const targetY = visible ? 0.52 : 0.45;
+    if (root.userData.reducedMotion === true) {
+      expandHint.scale.setScalar(targetScale);
+      expandHint.position.y = targetY;
+      expandHint.rotation.z = 0;
+      expandHint.visible = visible;
+      return;
+    }
+    hintTween = gsap.timeline({ onComplete: () => { expandHint.visible = visible; } })
+      .to(expandHint.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.2, ease: 'power2.out' }, 0)
+      .to(expandHint.position, { y: targetY, duration: 0.2, ease: 'power2.out' }, 0)
+      .to(expandHint.rotation, { z: 0, duration: 0.2, ease: 'power2.out' }, 0);
+  };
+  const startHintPulse = () => {
+    hintTween?.kill();
+    if (root.userData.reducedMotion === true || root.userData.expanded === true) return;
+    expandHint.visible = true;
+    expandHint.scale.setScalar(1);
+    expandHint.position.y = 0.52;
+    expandHint.rotation.z = 0;
+    hintTween = gsap.timeline({ repeat: -1, repeatDelay: 1.8 })
+      .to(expandHint.position, { y: 0.47, duration: 0.38, ease: 'sine.out' }, 0)
+      .to(expandHint.rotation, { z: 0.035, duration: 0.38, ease: 'sine.out' }, 0)
+      .to(expandHint.position, { y: 0.52, duration: 0.38, ease: 'sine.in' })
+      .to(expandHint.rotation, { z: 0, duration: 0.38, ease: 'sine.in' }, '<');
+  };
+  const hoverParts = [portraitCard, softwarePanel, ...abilities.children, personalityPanel, contactPanel];
+  const hoverBase = new Map(hoverParts.map((part) => [part, {
+    z: part.position.z,
+    scale: part.scale.clone(),
+  }]));
   const handle = createHandle(root, parts, targets, {
     setHovered: (value) => { hovered = value; },
+    setHoveredTarget: (target) => { hoveredTarget = target; },
+    setReducedMotion: (reduced) => {
+      root.userData.reducedMotion = reduced;
+      if (reduced) showExpandHint(root.userData.expanded !== true);
+      else startHintPulse();
+    },
     setProject: () => { root.userData.projectIndex = 0; },
+    toggleExpanded: () => {
+      const expanded = root.userData.expanded !== true;
+      root.userData.expanded = expanded;
+      root.userData.layoutTransitioning = true;
+      setExpandLabel(expanded ? '收起' : '展开');
+      showExpandHint(!expanded);
+      return timelines.run((timeline) => {
+        for (const part of layoutParts) {
+          const compact = compactLayout.get(part)!;
+          const readable = expandedLayout.get(part)!;
+          const destination = expanded ? readable : compact;
+          timeline.to(part.position, {
+            x: destination.position.x,
+            y: destination.position.y,
+            z: destination.position.z,
+            duration: 0.48,
+            ease: 'power3.inOut',
+          }, 0);
+          timeline.to(part.scale, {
+            x: destination.scale instanceof THREE.Vector3 ? destination.scale.x : destination.scale,
+            y: destination.scale instanceof THREE.Vector3 ? destination.scale.y : destination.scale,
+            z: destination.scale instanceof THREE.Vector3 ? destination.scale.z : destination.scale,
+            duration: 0.48,
+            ease: 'power3.inOut',
+          }, 0);
+        }
+        timeline.call(() => {
+          root.userData.layoutTransitioning = false;
+          if (!expanded) startHintPulse();
+        });
+      });
+    },
     open: () => timelines.run((timeline) => {
       root.userData.open = true;
+      startHintPulse();
       finalTransforms.forEach((final, part) => {
         part.position.y = final.y - (part === portraitCard ? 0.72 : 0.28);
         part.position.z = final.z - 0.52;
@@ -374,9 +535,9 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
         .to(abilities.position, { y: finalTransforms.get(abilities)!.y, z: finalTransforms.get(abilities)!.z, duration: 0.52 }, 0.24)
         .to(abilities.scale, { x: 1, y: 1, z: 1, duration: 0.5 }, 0.24)
         .to(softwarePanel.position, { y: finalTransforms.get(softwarePanel)!.y, z: finalTransforms.get(softwarePanel)!.z, duration: 0.55 }, 0.28)
-        .to(experiencePanel.position, { y: finalTransforms.get(experiencePanel)!.y, z: finalTransforms.get(experiencePanel)!.z, duration: 0.55 }, 0.32)
+        .to(personalityPanel.position, { y: finalTransforms.get(personalityPanel)!.y, z: finalTransforms.get(personalityPanel)!.z, duration: 0.55 }, 0.32)
         .to(contactPanel.position, { y: finalTransforms.get(contactPanel)!.y, z: finalTransforms.get(contactPanel)!.z, duration: 0.55 }, 0.36)
-        .to(websiteButton.position, { y: finalTransforms.get(websiteButton)!.y, z: finalTransforms.get(websiteButton)!.z, duration: 0.46 }, 0.41)
+        .to(profileStrip.position, { y: finalTransforms.get(profileStrip)!.y, z: finalTransforms.get(profileStrip)!.z, duration: 0.46 }, 0.41)
         .to(controls.position, { y: finalTransforms.get(controls)!.y, z: finalTransforms.get(controls)!.z, duration: 0.46 }, 0.445);
     }),
     close: () => timelines.run((timeline) => {
@@ -386,15 +547,26 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
   }, (delta, elapsed) => {
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
     const still = root.userData.reducedMotion === true;
-    const hoverAmount = hovered && !still ? 1 : 0;
-    const drift = still ? 0 : 1;
+    const activeTarget = hovered && !still && root.userData.layoutTransitioning !== true ? hoveredTarget : null;
+    for (const part of hoverParts) {
+      const base = hoverBase.get(part)!;
+      const topLevelExpanded = root.userData.expanded === true ? expandedLayout.get(part) : undefined;
+      const restZ = topLevelExpanded?.position.z ?? base.z;
+      const restScale = topLevelExpanded?.scale ?? base.scale.x;
+      const amount = part === activeTarget ? 1 : 0;
+      part.position.z = damp(part.position.z, restZ + amount * 0.13, 9, delta);
+      const scale = damp(part.scale.x, restScale * (1 + amount * 0.035), 9, delta);
+      part.scale.setScalar(scale);
+    }
     const portraitFinal = finalTransforms.get(portraitCard)!;
-    const abilitiesFinal = finalTransforms.get(abilities)!;
-    portraitCard.position.z = damp(portraitCard.position.z, portraitFinal.z + hoverAmount * 0.1, 8, delta);
-    portraitCard.rotation.z = damp(portraitCard.rotation.z, portraitFinal.rotationZ + hoverAmount * pointer.x * 0.025, 8, delta);
-    abilities.position.z = damp(abilities.position.z, abilitiesFinal.z + hoverAmount * 0.07, 8, delta);
+    portraitCard.rotation.z = damp(
+      portraitCard.rotation.z,
+      portraitFinal.rotationZ + (activeTarget === portraitCard ? pointer.x * 0.025 : 0),
+      8,
+      delta,
+    );
   });
   const baseDispose = handle.dispose;
-  handle.dispose = () => { timelines.killActiveTimeline(); baseDispose(); };
+  handle.dispose = () => { hintTween?.kill(); timelines.killActiveTimeline(); baseDispose(); };
   return handle;
 }

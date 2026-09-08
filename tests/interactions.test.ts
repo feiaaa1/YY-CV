@@ -78,4 +78,18 @@ describe('scene interaction mapping', () => {
     expect(resetPointerInteraction).toMatch(/this\.dragDistance = 0;/);
     expect(resetPointerInteraction).toMatch(/this\.detailHandle\.root\.userData\.dragRotation = \{ x: 0, y: 0 \};/);
   });
+
+  test('routes the exact hovered Three.js target to its owning model', () => {
+    const pointerMove = getMethodBody(experienceSource, 'private readonly onPointerMove');
+
+    expect(pointerMove).toMatch(/this\.hoveredHandle\?\.actions\.setHoveredTarget\(null\);/);
+    expect(pointerMove).toMatch(/owner\?\.actions\.setHoveredTarget\(hit\);/);
+  });
+
+  test('activates the about expand control through its owning model action', () => {
+    const activateTarget = getMethodBody(experienceSource, 'private activateTarget');
+
+    expect(activateTarget).toMatch(/target\.userData\.action === 'toggle-about-expanded'/);
+    expect(activateTarget).toMatch(/this\.targetOwners\.get\(target\)\?\.actions\.toggleExpanded\(\);/);
+  });
 });

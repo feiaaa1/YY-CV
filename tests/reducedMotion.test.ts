@@ -78,6 +78,21 @@ describe('live reduced motion', () => {
     about.dispose();
   });
 
+  test('about CV keeps targeted hover feedback still under reduced motion', () => {
+    const about = createAboutCvModel(portfolioContent.categories[0]!, true);
+    const portrait = about.parts.get('portrait-card')!;
+    const initialPosition = portrait.position.clone();
+    const initialScale = portrait.scale.clone();
+
+    about.actions.setHoveredTarget(portrait);
+    about.actions.setHovered(true);
+    settle(about.update);
+
+    expect(portrait.position.equals(initialPosition)).toBe(true);
+    expect(portrait.scale.equals(initialScale)).toBe(true);
+    about.dispose();
+  });
+
   test('scrapbook stops hover tilt under reduced motion', () => {
     const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, false);
     const hoverRig = scrapbook.parts.get('book-hover-rig')!;

@@ -397,18 +397,123 @@ describe('procedural model contracts', () => {
 
     expect([...about.parts.keys()]).toEqual(expect.arrayContaining([
       'ruled-background', 'main-board', 'cv-tab-stack', 'portrait-card',
-      'about-print', 'abilities-cards', 'software-panel', 'experience-panel',
-      'contact-panel', 'website-button',
-      'corner-controls', 'close-tag',
+      'about-print', 'abilities-cards', 'software-panel', 'personality-panel',
+      'contact-panel', 'profile-strip',
+      'corner-controls', 'close-tag', 'expand-hint',
     ]));
     expect(about.interactiveTargets.some((target) => target.userData.action === 'close-detail')).toBe(true);
-    expect(about.interactiveTargets.some((target) => target.userData.action === 'visit-website')).toBe(true);
+    expect(about.interactiveTargets.some((target) => target.userData.action === 'visit-website')).toBe(false);
 
     await about.actions.open();
     expect(about.root.userData.open).toBe(true);
     expect(about.root.userData.projectIndex).toBe(0);
     about.actions.setProject(2);
     expect(about.root.userData.projectIndex).toBe(0);
+    about.dispose();
+  });
+
+  test('about CV portrait keeps the source texture ratio and flat layout panels do not overlap', async () => {
+    const about = createAboutCvModel(portfolioContent.categories[0]!, true);
+    const portrait = about.parts.get('portrait-card') as THREE.Mesh;
+    const software = about.parts.get('software-panel') as THREE.Mesh;
+    const personality = about.parts.get('personality-panel') as THREE.Mesh;
+    const abilityCards = [0, 1, 2].map((index) => about.parts.get(`ability-card-${index}`) as THREE.Mesh);
+    about.root.updateMatrixWorld(true);
+    const boxSize = (mesh: THREE.Mesh) => new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
+    const overlapsInXy = (first: THREE.Mesh, second: THREE.Mesh) => {
+      const firstBox = new THREE.Box3().setFromObject(first);
+      const secondBox = new THREE.Box3().setFromObject(second);
+      return firstBox.min.x < secondBox.max.x && firstBox.max.x > secondBox.min.x
+        && firstBox.min.y < secondBox.max.y && firstBox.max.y > secondBox.min.y;
+    };
+
+    const portraitSize = boxSize(portrait);
+    expect(portraitSize.x / portraitSize.y).toBeCloseTo(620 / 790, 1);
+    expect(portrait.userData.imageFit).toBe('contain');
+    expect(overlapsInXy(portrait, software)).toBe(false);
+    for (const card of abilityCards) expect(overlapsInXy(card, personality)).toBe(false);
+
+    await about.actions.toggleExpanded();
+    about.root.updateMatrixWorld(true);
+    const flatPanels = [
+      about.parts.get('cv-tab-stack') as THREE.Mesh,
+      about.parts.get('about-print') as THREE.Mesh,
+      portrait,
+      software,
+      about.parts.get('abilities-cards') as THREE.Mesh,
+      personality,
+      about.parts.get('contact-panel') as THREE.Mesh,
+      about.parts.get('profile-strip') as THREE.Mesh,
+      about.parts.get('corner-controls') as THREE.Mesh,
+    ];
+    for (const [index, panel] of flatPanels.entries()) {
+      for (const other of flatPanels.slice(index + 1)) {
+        expect(overlapsInXy(panel, other), `${panel.name} overlaps ${other.name}`).toBe(false);
+      }
+    }
+    about.dispose();
+  });
+
+  test('about CV exposes a readable expand control that animates and restores the layout', async () => {
+    const about = createAboutCvModel(portfolioContent.categories[0]!, false);
+    const expand = about.parts.get('expand-control') as THREE.Mesh;
+    const close = about.parts.get('close-tag') as THREE.Mesh;
+    const hint = about.parts.get('expand-hint') as THREE.Mesh;
+    const personality = about.parts.get('personality-panel')!;
+    const initialPosition = personality.position.clone();
+    const initialScale = personality.scale.clone();
+    const actions = about.actions as typeof about.actions & { toggleExpanded(): void };
+
+    expect(about.interactiveTargets).toContain(expand);
+    expect(expand.userData.action).toBe('toggle-about-expanded');
+    expect(hint.userData.hintStyle).toBe('hand-drawn-arrow');
+    expect(hint.visible).toBe(true);
+    expect((expand.geometry as THREE.BoxGeometry).parameters.width * expand.scale.x).toBeGreaterThanOrEqual(1);
+    expect((close.geometry as THREE.BoxGeometry).parameters.width * close.scale.x).toBeGreaterThanOrEqual(1);
+
+    const expandTransition = actions.toggleExpanded();
+    expect(about.root.userData.layoutTransitioning).toBe(true);
+    await expandTransition;
+    expect(about.root.userData.expanded).toBe(true);
+    expect(about.root.userData.layoutTransitioning).toBe(false);
+    expect(expand.userData.label).toBe('收起');
+    expect(hint.visible).toBe(false);
+    expect(personality.scale.x).not.toBeCloseTo(initialScale.x);
+    expect(personality.position.equals(initialPosition)).toBe(false);
+
+    await actions.toggleExpanded();
+    expect(about.root.userData.expanded).toBe(false);
+    expect(expand.userData.label).toBe('展开');
+    expect(hint.visible).toBe(true);
+    expect(personality.scale.equals(initialScale)).toBe(true);
+    expect(personality.position.equals(initialPosition)).toBe(true);
+    about.dispose();
+  });
+
+  test('about CV hover feedback belongs to the exact portrait, panel, or ability card under the pointer', () => {
+    const about = createAboutCvModel(portfolioContent.categories[0]!, false);
+    const targetNames = [
+      'portrait-card', 'software-panel', 'ability-card-0', 'ability-card-1',
+      'ability-card-2', 'personality-panel', 'contact-panel',
+    ];
+    const targetParts = targetNames.map((name) => about.parts.get(name)!);
+    const baseZ = new Map(targetParts.map((part) => [part, part.position.z]));
+    const actions = about.actions as typeof about.actions & { setHoveredTarget(target: THREE.Object3D | null): void };
+
+    for (const target of targetParts) {
+      expect(about.interactiveTargets).toContain(target);
+      actions.setHoveredTarget(target);
+      about.actions.setHovered(true);
+      for (let tick = 0; tick < 120; tick += 1) about.update(1 / 60, tick / 60);
+      expect(target.position.z).toBeGreaterThan(baseZ.get(target)! + 0.05);
+      for (const other of targetParts) {
+        if (other === target) continue;
+        expect(other.position.z).toBeCloseTo(baseZ.get(other)!, 3);
+      }
+      about.actions.setHovered(false);
+      actions.setHoveredTarget(null);
+      for (let tick = 0; tick < 120; tick += 1) about.update(1 / 60, tick / 60);
+    }
     about.dispose();
   });
 
