@@ -43,6 +43,7 @@ export class PortfolioExperience {
   private readonly thanksHandle: SculptModelHandle;
   private keyLight!: THREE.DirectionalLight;
   private detailHandle: SculptModelHandle | null = null;
+  private aboutPage: { dispose: () => void } | null = null;
   private state: ExperienceState;
   private hoveredHandle: SculptModelHandle | null = null;
   private readonly pointerSession = createPointerSession<PointerSnapshot>();
@@ -589,9 +590,12 @@ export class PortfolioExperience {
         : category.presentation === 'book' ? '#C91F58' : '#A75EDF');
     switch (category.presentation) {
       case 'about': {
-        const { createAboutCvModel } = await import('../models/aboutCv');
-        this.detailHandle = createAboutCvModel(category, this.state.reducedMotion);
-        break;
+        const { mountAboutProfilePage } = await import('../about/aboutProfilePage');
+        this.aboutPage = mountAboutProfilePage(this.container, {
+          reducedMotion: this.state.reducedMotion,
+          onClose: () => { void this.dispatch({ type: 'CLOSE_DETAIL' }); },
+        });
+        return;
       }
       case 'scrapbook': {
         const { createScrapbookModel } = await import('../models/scrapbook');
@@ -632,6 +636,8 @@ export class PortfolioExperience {
 
   private clearDetail(): void {
     this.resetGestureState();
+    this.aboutPage?.dispose();
+    this.aboutPage = null;
     if (!this.detailHandle) return;
     this.unregisterHandle(this.detailHandle);
     this.detailHandle.dispose();
@@ -784,6 +790,8 @@ export class PortfolioExperience {
       clearTimeout(this.toastTimer);
       this.toastTimer = null;
     }
+    this.aboutPage?.dispose();
+    this.aboutPage = null;
     for (const handle of this.modelHandles) handle.dispose();
     disposeObject(this.directoryHeader);
     this.renderer.dispose();

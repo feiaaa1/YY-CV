@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Ryan/Downloads/**)",
+      "Bash(unzip -l \"c:/Users/Ryan/Downloads/f065418e31526c6a2b85c8fcaa64f2602c1cbbe5.zip\")"
+    ]
+  }
+}
