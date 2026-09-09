@@ -62,6 +62,71 @@ describe('procedural model contracts', () => {
     cover.dispose();
   });
 
+  test('cover scales only the central folder while surrounding typography stays full size', async () => {
+    const cover = createCoverModel(true);
+    const assembly = cover.parts.get('folder-assembly')!;
+    const title = cover.parts.get('portfolio-title')!;
+    const year = cover.parts.get('year-script')!;
+    const leftInfo = cover.parts.get('left-info')!;
+    const rightInfo = cover.parts.get('right-info')!;
+
+    expect(assembly.scale.toArray()).toEqual([0.85, 0.85, 0.85]);
+    for (const typography of [title, year, leftInfo, rightInfo]) {
+      expect(typography.parent).toBe(cover.root);
+      expect(typography.scale.toArray()).toEqual([1, 1, 1]);
+    }
+
+    await cover.actions.open();
+    await cover.actions.close();
+    expect(assembly.scale.toArray()).toEqual([0.85, 0.85, 0.85]);
+    cover.dispose();
+  });
+
+  test('cover greeting keeps its title and two subtitle rows visually separated', () => {
+    const originalDocument = globalThis.document;
+    const drawCalls: Array<{ text: string; y: number; fontSize: number }> = [];
+    let currentFont = '';
+    const context = {
+      fillStyle: '',
+      get font() { return currentFont; },
+      set font(value: string) { currentFont = value; },
+      textAlign: 'left',
+      textBaseline: 'middle',
+      clearRect: () => undefined,
+      fillRect: () => undefined,
+      measureText: (value: string) => ({ width: [...value].length * 16 }),
+      fillText(value: string, _x: number, y: number) {
+        drawCalls.push({
+          text: value,
+          y,
+          fontSize: Number(/(\d+)px/.exec(currentFont)?.[1] ?? 0),
+        });
+      },
+    } as unknown as CanvasRenderingContext2D;
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: {
+        createElement: () => ({ width: 0, height: 0, getContext: () => context }),
+      },
+    });
+
+    try {
+      const cover = createCoverModel(true);
+      const rows = ['韩婧仪', 'GINNY · 电商运营', 'E-COMMERCE OPERATIONS']
+        .map((text) => drawCalls.find((call) => call.text === text)!);
+      const [title, firstSubtitle, secondSubtitle] = rows;
+      const bottom = (row: { y: number; fontSize: number }) => row.y + row.fontSize / 2;
+      const top = (row: { y: number; fontSize: number }) => row.y - row.fontSize / 2;
+
+      expect(bottom(title!)).toBeLessThan(top(firstSubtitle!));
+      expect(bottom(firstSubtitle!)).toBeLessThan(top(secondSubtitle!));
+      cover.dispose();
+    } finally {
+      if (originalDocument === undefined) Reflect.deleteProperty(globalThis, 'document');
+      else Object.defineProperty(globalThis, 'document', { configurable: true, value: originalDocument });
+    }
+  });
+
   test('cover front flap is physically joined to the rear shell at one bottom seam', () => {
     const cover = createCoverModel(true);
     const rear = cover.parts.get('folder-back') as THREE.Mesh;
@@ -247,7 +312,51 @@ describe('procedural model contracts', () => {
     folder.dispose();
   });
 
-  test('first directory folder uses five equally sized sticker assets inside the pocket', () => {
+  test.each(['sport', 'business', 'technology', 'culture', 'cinema'] as const)(
+    '%s collage stays between the folder panels with controlled vertical variation',
+    async (variant) => {
+      const folder = createDirectoryFolderModel(portfolioContent.categories[0]!, variant, true);
+      const collage = folder.parts.get('collage-root')!;
+      const rear = folder.parts.get('rear-pocket')!;
+      const front = folder.parts.get('front-pocket')!;
+      const rest = collage.position.clone();
+      const assertBetweenPanels = () => {
+        folder.root.updateMatrixWorld(true);
+        const collageBounds = new THREE.Box3().setFromObject(collage);
+        expect(collageBounds.min.z).toBeGreaterThan(new THREE.Box3().setFromObject(rear).max.z);
+        expect(collageBounds.max.z).toBeLessThan(new THREE.Box3().setFromObject(front).max.z);
+      };
+      assertBetweenPanels();
+      await folder.actions.open();
+      await folder.actions.close();
+      expect(collage.position.toArray()).toEqual(rest.toArray());
+      assertBetweenPanels();
+      folder.actions.setReducedMotion(false);
+      folder.actions.setHovered(true);
+      for (let index = 0; index < 60; index += 1) {
+        folder.update(1 / 60, index / 60);
+        assertBetweenPanels();
+      }
+      folder.actions.setHovered(false);
+      for (let index = 0; index < 60; index += 1) {
+        folder.update(1 / 60, index / 60);
+        assertBetweenPanels();
+      }
+      const pieces = collage.children.filter((piece) => piece.name.startsWith('collage-piece-'));
+      const frontTop = new THREE.Box3().setFromObject(front).max.y;
+      const centers = pieces.map((piece) => piece.getWorldPosition(new THREE.Vector3()));
+      expect(Math.min(...centers.map((center) => center.y))).toBeGreaterThan(frontTop);
+      expect(Math.max(...centers.map((center) => center.x))
+        - Math.min(...centers.map((center) => center.x))).toBeGreaterThanOrEqual(1.6);
+      const verticalSpan = Math.max(...pieces.map((piece) => piece.position.y))
+        - Math.min(...pieces.map((piece) => piece.position.y));
+      expect(verticalSpan).toBeGreaterThanOrEqual(0.28);
+      expect(verticalSpan).toBeLessThanOrEqual(0.36);
+      folder.dispose();
+    },
+  );
+
+  test('first directory folder spreads its five sticker assets across the front', () => {
     const folder = createDirectoryFolderModel(portfolioContent.categories[0]!, 'sport', true);
     const collage = folder.parts.get('collage-root') as THREE.Group;
     const pieces = [...folder.parts.entries()]
@@ -269,16 +378,18 @@ describe('procedural model contracts', () => {
       const size = piece.geometry.boundingBox!.getSize(new THREE.Vector3());
       const bounds = new THREE.Box3().setFromObject(piece);
       expect(Math.max(size.x, size.y)).toBeCloseTo(Number(piece.userData.normalizedSize));
-      expect(Number(piece.userData.normalizedSize)).toBeGreaterThanOrEqual(0.52 * 1.5 * 0.76);
+      expect(Number(piece.userData.normalizedSize)).toBeGreaterThanOrEqual(0.5);
       expect(bounds.min.x).toBeGreaterThan(-1.34);
       expect(bounds.max.x).toBeLessThan(1.34);
       expect(bounds.max.y).toBeLessThan(1.42);
-      expect(collage.position.z + piece.position.z).toBeGreaterThan(0.015);
-      expect(0.048 + piece.position.z).toBeLessThan(0.06);
+      expect(collage.position.z + piece.position.z).toBeLessThan(0.14);
     }
     expect(new Set(pieces.map((piece) => piece.rotation.z)).size).toBe(5);
     expect(new Set(pieces.map((piece) => piece.userData.normalizedSize)).size).toBeGreaterThan(1);
-    expect(Math.max(...pieces.map((piece) => piece.position.y)) - Math.min(...pieces.map((piece) => piece.position.y))).toBeGreaterThan(0.05);
+    expect(Number(pieces[0]?.userData.normalizedSize)).toBeCloseTo(0.955, 3);
+    const verticalSpan = Math.max(...pieces.map((piece) => piece.position.y)) - Math.min(...pieces.map((piece) => piece.position.y));
+    expect(verticalSpan).toBeGreaterThanOrEqual(0.28);
+    expect(verticalSpan).toBeLessThanOrEqual(0.36);
     expect(pieces.some((piece) => piece.position.z > 0.006)).toBe(true);
     expect(Math.min(...pieces.map((piece) => piece.position.x))).toBeLessThan(-0.5);
     expect(Math.max(...pieces.map((piece) => piece.position.x))).toBeGreaterThan(0.5);
@@ -294,6 +405,36 @@ describe('procedural model contracts', () => {
     expect(posterFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('reader_monster_reader.png');
     uiFolder.dispose();
     posterFolder.dispose();
+  });
+
+  test('fourth directory folder uses the supplied illustration sticker set', () => {
+    const folder = createDirectoryFolderModel(portfolioContent.categories[3]!, 'culture', true);
+    const pieces = [...folder.parts.values()].filter((object) => object.userData.stickerSource);
+
+    expect(pieces).toHaveLength(5);
+    expect(pieces.map((piece) => piece.userData.stickerSource)).toEqual([
+      'reader_bedtime_reader.png',
+      'duoduo_love_duoduo.png',
+      'russian_deal_hands.png',
+      'productivity_green_arrow.png',
+      'retro_tv_face.png',
+    ]);
+    folder.dispose();
+  });
+
+  test('fifth directory folder uses the supplied project sticker set', () => {
+    const folder = createDirectoryFolderModel(portfolioContent.categories[4]!, 'cinema', true);
+    const pieces = [...folder.parts.values()].filter((object) => object.userData.stickerSource);
+
+    expect(pieces).toHaveLength(5);
+    expect(pieces.map((piece) => piece.userData.stickerSource)).toEqual([
+      'productivity_teamwork_badge.png',
+      'russian_coffee.png',
+      'retro_record_player.png',
+      'reader_fantastic_dinosaur.png',
+      'duoduo_full_marks.png',
+    ]);
+    folder.dispose();
   });
 
   test('directory hover opens only the front panel while the folder root stays fixed', () => {

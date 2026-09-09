@@ -18,6 +18,13 @@ function labels(state: ExperienceState): string[] {
 }
 
 describe('screen semantics', () => {
+  test('describes the cover as an e-commerce operations portfolio', () => {
+    const descriptor = describeScreen(portfolioContent, createExperienceState(false));
+
+    expect(descriptor.heading).toBe('电商运营作品集 / E-COMMERCE PORTFOLIO');
+    expect(descriptor.details).toContain('韩婧仪，电商运营');
+  });
+
   test('exposes a heading and the contact string on the thanks screen', () => {
     const state = reduceExperience(createExperienceState(false), { type: 'FINISH' });
     const descriptor = describeScreen(portfolioContent, state);

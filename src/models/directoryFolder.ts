@@ -18,12 +18,10 @@ const FOLDER_WIDTH = 2.68;
 const REAR_BODY_HEIGHT = 2.15;
 const FRONT_HEIGHT = 1.53;
 const BOTTOM_SEAM_Y = -REAR_BODY_HEIGHT / 2;
-// Each sticker occupies roughly one quarter of the folder width while
-// preserving its source aspect ratio.
-// Large enough to read as a sticker cluster, while leaving room for five
-// overlapping pieces to span the folder from left to right.
-const STICKER_MAX_SIZE = FOLDER_WIDTH * 0.25 * 1.5;
+// Keep the stickers readable without letting the cluster escape the pocket.
+const STICKER_MAX_SIZE = FOLDER_WIDTH * 0.3 * 1.1;
 const STICKER_VERTICAL_OFFSET = 0.16;
+const COLLAGE_REST_Z = 0.075;
 
 type StickerAsset = { file: string; width: number; height: number; scale: number };
 
@@ -52,6 +50,22 @@ const posterStickers: StickerAsset[] = [
   { file: 'retro_lightning.png', width: 95, height: 110, scale: 0.76 },
 ];
 
+const illustrationStickers: StickerAsset[] = [
+  { file: 'reader_bedtime_reader.png', width: 303, height: 213, scale: 1 },
+  { file: 'duoduo_love_duoduo.png', width: 461, height: 280, scale: 1.1 },
+  { file: 'russian_deal_hands.png', width: 199, height: 218, scale: 0.86 },
+  { file: 'productivity_green_arrow.png', width: 1135, height: 1021, scale: 0.96 },
+  { file: 'retro_tv_face.png', width: 184, height: 127, scale: 0.8 },
+];
+
+const projectStickers: StickerAsset[] = [
+  { file: 'productivity_teamwork_badge.png', width: 1920, height: 1920, scale: 0.84 },
+  { file: 'russian_coffee.png', width: 221, height: 203, scale: 0.82 },
+  { file: 'retro_record_player.png', width: 170, height: 144, scale: 0.78 },
+  { file: 'reader_fantastic_dinosaur.png', width: 314, height: 297, scale: 1 },
+  { file: 'duoduo_full_marks.png', width: 464, height: 286, scale: 0.85 },
+];
+
 function mixColor(color: string, target: string, amount: number): string {
   return `#${new THREE.Color(color).lerp(new THREE.Color(target), amount).getHexString()}`;
 }
@@ -62,7 +76,9 @@ function directoryRearShape(): THREE.Shape {
   const bottom = -REAR_BODY_HEIGHT / 2;
   const top = REAR_BODY_HEIGHT / 2;
   const radius = 0.23;
-  const tabLeft = left + 0.18;
+  // The tab shoulder must end before the body's upper-left corner begins.
+  // Otherwise the outline doubles back and its bevel produces a left spike.
+  const tabLeft = left + radius + 0.13 + 0.08;
   const tabRight = left + 0.98;
   const tabTop = top + 0.34;
   const tabRadius = 0.13;
@@ -96,16 +112,18 @@ function makeCutout(
   if (shape === 'circle' || shape === 'disk' || shape === 'dot') {
     const radius = shape === 'dot' ? 0.16 : shape === 'circle' ? 0.29 : 0.25;
     const sides = shape === 'circle' ? 24 : 10;
+    const backingGeometry = new THREE.CylinderGeometry(radius + 0.055, radius + 0.055, 0.006, sides);
+    const artworkGeometry = new THREE.CylinderGeometry(radius, radius, 0.004, sides);
+    backingGeometry.rotateX(Math.PI / 2);
+    artworkGeometry.rotateX(Math.PI / 2);
     const backing = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius + 0.055, radius + 0.055, 0.006, sides),
+      backingGeometry,
       new THREE.MeshStandardMaterial({ color: '#FFFDF5', roughness: 0.92 }),
     );
     const artwork = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius, radius, 0.004, sides),
+      artworkGeometry,
       new THREE.MeshStandardMaterial({ color, roughness: 0.72 }),
     );
-    backing.rotation.x = Math.PI / 2;
-    artwork.rotation.x = Math.PI / 2;
     return { backing, artwork };
   }
 
@@ -119,11 +137,11 @@ function makeCutout(
 function addCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, variant: CollageVariant): void {
   const palette = collagePalettes[variant];
   const placements = [
-    { x: -0.8, y: 0.15, r: -0.25, shape: 'card' },
-    { x: -0.38, y: 0.34, r: 0.08, shape: 'ticket' },
-    { x: 0.08, y: 0.22, r: -0.12, shape: 'dot' },
-    { x: 0.48, y: 0.32, r: 0.2, shape: 'card' },
-    { x: 0.82, y: 0.12, r: -0.1, shape: 'disk' },
+    { x: -0.87, y: 0.09, r: -0.2, shape: 'card' },
+    { x: -0.43, y: 0.31, r: 0.12, shape: 'ticket' },
+    { x: 0.02, y: 0.14, r: -0.12, shape: 'dot' },
+    { x: 0.43, y: 0.33, r: 0.18, shape: 'card' },
+    { x: 0.91, y: 0.11, r: -0.1, shape: 'disk' },
   ] satisfies Array<{ x: number; y: number; r: number; shape: 'circle' | 'card' | 'disk' | 'ticket' | 'dot' }>;
   placements.forEach((placement, index) => {
     const cutout = makeCutout(placement.shape, palette[index]!);
@@ -143,8 +161,8 @@ function addCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, vari
 }
 
 function addStickerCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, assets: StickerAsset[], directory: string): void {
-  const xPositions = assets.length === 6 ? [-0.74, -0.45, -0.15, 0.16, 0.46, 0.75] : [-0.7, -0.34, 0, 0.36, 0.73];
-  const yPositions = assets.length === 6 ? [-0.08, 0.18, -0.03, 0.14, -0.02, 0.1] : [-0.08, 0.08, 0.1, 0.05, -0.1];
+  const xPositions = assets.length === 6 ? [-0.82, -0.5, -0.16, 0.18, 0.5, 0.82] : [-0.77, -0.38, 0.02, 0.42, 0.84];
+  const yPositions = assets.length === 6 ? [-0.11, 0.16, -0.04, 0.19, -0.09, 0.14] : [-0.11, 0.16, -0.04, 0.19, -0.09];
   const rotations = assets.length === 6 ? [-0.22, 0.17, -0.06, 0.13, -0.15, 0.2] : [-0.22, 0.17, -0.06, 0.13, -0.15];
 
   assets.forEach((sticker, index) => {
@@ -213,12 +231,13 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
 
   const collageRoot = new THREE.Group();
   collageRoot.name = 'collage-root';
-  // Keep collage layers behind the closed front pocket surface.
-  const stickerVariant = variant === 'sport' || variant === 'business' || variant === 'technology';
-  collageRoot.position.set(0, stickerVariant ? 0.4 : 0.48, 0.04);
+  // The collage sits in the pocket: ahead of the rear shell, behind the front face.
+  collageRoot.position.set(0, 0.44, COLLAGE_REST_Z);
   if (variant === 'sport') addStickerCollage(collageRoot, parts, brandStickers, 'brand-stickers');
   else if (variant === 'business') addStickerCollage(collageRoot, parts, uiWebStickers, 'ui-web-stickers');
   else if (variant === 'technology') addStickerCollage(collageRoot, parts, posterStickers, 'poster-stickers');
+  else if (variant === 'culture') addStickerCollage(collageRoot, parts, illustrationStickers, 'illustration-stickers');
+  else if (variant === 'cinema') addStickerCollage(collageRoot, parts, projectStickers, 'project-stickers');
   else addCollage(collageRoot, parts, variant);
   root.add(collageRoot);
   parts.set(collageRoot.name, collageRoot);
@@ -271,7 +290,7 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
         .to(pocketHinge.rotation, { x: 1.18, duration: 0.62, ease: 'back.inOut(1.1)' }, 0)
         .to(collageRoot.position, {
           y: 0.78,
-          z: stickerVariant ? 0.16 : 0.055,
+          z: COLLAGE_REST_Z + 0.015,
           duration: 0.46,
           ease: 'power2.out',
         }, 0.08)
@@ -281,7 +300,7 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
     close: () => timelines.run((timeline) => {
       timeline
         .to(pocketHinge.rotation, { x: 0, duration: 0.46, ease: 'power3.inOut' }, 0)
-        .to(collageRoot.position, { y: stickerVariant ? 0.4 : 0.48, z: 0.04, duration: 0.38 }, 0)
+        .to(collageRoot.position, { y: 0.44, z: COLLAGE_REST_Z, duration: 0.38 }, 0)
         .to(collageRoot.scale, { x: 1, y: 1, duration: 0.35 }, 0);
     }).finally(() => { root.userData.opened = false; }),
   }, (delta) => {
@@ -291,9 +310,9 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
       const pointerY = THREE.MathUtils.clamp(Number(pointer.y) || 0, -1, 1);
       const hoverAngle = 0.38 + pointerY * 0.06;
       pocketHinge.rotation.x = damp(pocketHinge.rotation.x, hover ? hoverAngle : 0, 10, delta);
-      const baseY = stickerVariant ? 0.4 : 0.48;
+      const baseY = 0.44;
       collageRoot.position.y = damp(collageRoot.position.y, hover ? baseY + 0.09 : baseY, 9, delta);
-      collageRoot.position.z = damp(collageRoot.position.z, hover ? 0.048 : 0.04, 9, delta);
+      collageRoot.position.z = damp(collageRoot.position.z, COLLAGE_REST_Z, 9, delta);
     }
   });
   const baseDispose = handle.dispose;

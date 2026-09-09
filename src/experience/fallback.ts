@@ -14,7 +14,7 @@ export function buildFallbackContent(content: PortfolioContent): FallbackNode {
     tag: 'section',
     className: 'fallback',
     children: [
-      { tag: 'p', className: 'fallback__kicker', text: 'PORTFOLIO / 作品集' },
+      { tag: 'p', className: 'fallback__kicker', text: `${content.title.en} / ${content.title.zh}` },
       { tag: 'h1', text: '你的浏览器暂时无法显示 3D 场景' },
       { tag: 'p', text: '请开启 WebGL 或使用最新版浏览器。你仍可通过以下列表浏览分类：' },
       {

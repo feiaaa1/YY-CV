@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { gsap } from 'gsap';
 import { createTimelineController, type TimelineController } from '../animation/timelines';
 import type { Category, PortfolioContent } from '../content/types';
 import { createCoverModel } from '../models/cover';
@@ -18,9 +19,107 @@ import { resolveInteractionAction } from './interactions';
 import { countProjects, describeScreen } from './accessibility';
 import { findCategory, hasCategory } from './categories';
 import { runLockedTransition } from './transitions';
-import { createExperienceState, reduceExperience, type ExperienceAction, type ExperienceState } from './stateMachine';
+import {
+  createExperienceState,
+  reduceExperience,
+  type ExperienceAction,
+  type ExperienceScreen,
+  type ExperienceState,
+} from './stateMachine';
 
 type PointerSnapshot = { x: number; y: number; clientX: number; clientY: number; pointerId: number };
+
+export type ScreenModelRegistry = {
+  cover: SculptModelHandle;
+  directory: SculptModelHandle[];
+  detail: SculptModelHandle | null;
+  thanks: SculptModelHandle;
+};
+
+export function selectActiveModelHandles(
+  screen: ExperienceScreen,
+  registry: ScreenModelRegistry,
+): SculptModelHandle[] {
+  if (screen === 'cover') return [registry.cover];
+  if (screen === 'directory') return registry.directory;
+  if (screen === 'detail') return registry.detail ? [registry.detail] : [];
+  return [registry.thanks];
+}
+
+export function addDirectoryEntranceAnimations(
+  timeline: gsap.core.Timeline,
+  folders: SculptModelHandle[],
+): void {
+  folders.forEach((handle, folderIndex) => {
+    const root = handle.root;
+    const targetPosition = root.position.clone();
+    const targetScale = root.scale.x;
+    const targetRotation = root.rotation.z;
+    const folderStart = folderIndex * 0.11;
+
+    timeline
+      .fromTo(root.position, {
+        x: targetPosition.x,
+        y: targetPosition.y - 0.72,
+        z: -0.55,
+      }, {
+        x: targetPosition.x,
+        y: targetPosition.y,
+        z: targetPosition.z,
+        ease: 'back.out(1.25)',
+      }, folderStart)
+      .fromTo(root.scale, {
+        x: targetScale * 0.76,
+        y: targetScale * 0.76,
+        z: targetScale * 0.76,
+      }, {
+        x: targetScale,
+        y: targetScale,
+        z: targetScale,
+        ease: 'back.out(1.35)',
+      }, folderStart)
+      .fromTo(root.rotation, {
+        z: targetRotation + (folderIndex % 2 === 0 ? -0.08 : 0.08),
+      }, {
+        z: targetRotation,
+        ease: 'power2.out',
+      }, folderStart);
+
+    const collage = handle.parts.get('collage-root');
+    if (!collage) return;
+    const collagePosition = collage.position.clone();
+    const collageScale = collage.scale.clone();
+    const collageRotation = collage.rotation.z;
+    const collageStart = folderStart + 0.16;
+    timeline
+      .fromTo(collage.position, {
+        x: collagePosition.x,
+        y: collagePosition.y - 0.34,
+        z: collagePosition.z - 0.035,
+      }, {
+        x: collagePosition.x,
+        y: collagePosition.y,
+        z: collagePosition.z,
+        ease: 'back.out(1.55)',
+      }, collageStart)
+      .fromTo(collage.scale, {
+        x: collageScale.x * 0.72,
+        y: collageScale.y * 0.72,
+        z: collageScale.z * 0.72,
+      }, {
+        x: collageScale.x,
+        y: collageScale.y,
+        z: collageScale.z,
+        ease: 'back.out(1.8)',
+      }, collageStart)
+      .fromTo(collage.rotation, {
+        z: collageRotation + (folderIndex % 2 === 0 ? -0.08 : 0.08),
+      }, {
+        z: collageRotation,
+        ease: 'back.out(1.4)',
+      }, collageStart);
+  });
+}
 
 export class PortfolioExperience {
   private readonly scene = new THREE.Scene();
@@ -42,6 +141,7 @@ export class PortfolioExperience {
   private readonly directoryHeader: THREE.Mesh;
   private readonly coverHandle: SculptModelHandle;
   private readonly thanksHandle: SculptModelHandle;
+  private readonly screenModels: ScreenModelRegistry;
   private keyLight!: THREE.DirectionalLight;
   private detailHandle: SculptModelHandle | null = null;
   private aboutPage: { dispose: () => void } | null = null;
@@ -136,6 +236,12 @@ export class PortfolioExperience {
     this.thanksHandle.root.visible = false;
     this.scene.add(this.thanksHandle.root);
     this.registerHandle(this.thanksHandle);
+    this.screenModels = {
+      cover: this.coverHandle,
+      directory: [...this.folderHandles.values()],
+      detail: null,
+      thanks: this.thanksHandle,
+    };
 
     this.camera.position.set(0, 0.25, 11.8);
     this.camera.lookAt(0, 0, 0);
@@ -410,78 +516,7 @@ export class PortfolioExperience {
       .map((category) => this.folderHandles.get(category.id))
       .filter((handle): handle is SculptModelHandle => handle !== undefined);
 
-    return this.directoryEntrance.run((timeline) => {
-      folders.forEach((handle, folderIndex) => {
-        const root = handle.root;
-        const targetPosition = root.position.clone();
-        const targetScale = root.scale.x;
-        const targetRotation = root.rotation.z;
-        const folderStart = folderIndex * 0.11;
-
-        timeline
-          .fromTo(root.position, {
-            x: targetPosition.x,
-            y: targetPosition.y - 0.72,
-            z: -0.55,
-          }, {
-            x: targetPosition.x,
-            y: targetPosition.y,
-            z: targetPosition.z,
-            ease: 'back.out(1.25)',
-          }, folderStart)
-          .fromTo(root.scale, {
-            x: targetScale * 0.76,
-            y: targetScale * 0.76,
-            z: targetScale * 0.76,
-          }, {
-            x: targetScale,
-            y: targetScale,
-            z: targetScale,
-            ease: 'back.out(1.35)',
-          }, folderStart)
-          .fromTo(root.rotation, {
-            z: targetRotation + (folderIndex % 2 === 0 ? -0.08 : 0.08),
-          }, {
-            z: targetRotation,
-            ease: 'power2.out',
-          }, folderStart);
-
-        const collage = handle.parts.get('collage-root');
-        collage?.children.forEach((piece, pieceIndex) => {
-          const target = piece.position.clone();
-          const targetPieceScale = piece.scale.clone();
-          const targetPieceRotation = piece.rotation.z;
-          const pieceStart = folderStart + 0.16 + pieceIndex * 0.035;
-          timeline
-            .fromTo(piece.position, {
-              x: target.x,
-              y: target.y - 0.34,
-              z: target.z - 0.035,
-            }, {
-              x: target.x,
-              y: target.y,
-              z: target.z,
-              ease: 'back.out(1.55)',
-            }, pieceStart)
-            .fromTo(piece.scale, {
-              x: targetPieceScale.x * 0.28,
-              y: targetPieceScale.y * 0.28,
-              z: targetPieceScale.z * 0.28,
-            }, {
-              x: targetPieceScale.x,
-              y: targetPieceScale.y,
-              z: targetPieceScale.z,
-              ease: 'back.out(1.8)',
-            }, pieceStart)
-            .fromTo(piece.rotation, {
-              z: targetPieceRotation + (pieceIndex % 2 === 0 ? -0.2 : 0.2),
-            }, {
-              z: targetPieceRotation,
-              ease: 'back.out(1.4)',
-            }, pieceStart);
-        });
-      });
-    });
+    return this.directoryEntrance.run((timeline) => addDirectoryEntranceAnimations(timeline, folders));
   }
 
   private async dispatch(action: ExperienceAction): Promise<void> {
@@ -706,6 +741,7 @@ export class PortfolioExperience {
     this.detailHandle.root.userData.targetScale = getDetailScale(this.container.clientWidth, this.container.clientHeight);
     this.scene.add(this.detailHandle.root);
     this.registerHandle(this.detailHandle);
+    this.screenModels.detail = this.detailHandle;
     await this.detailHandle.actions.open();
   }
 
@@ -725,6 +761,7 @@ export class PortfolioExperience {
     this.unregisterHandle(this.detailHandle);
     this.detailHandle.dispose();
     this.detailHandle = null;
+    this.screenModels.detail = null;
   }
 
   private announce(message: string, visible = false): void {
@@ -833,7 +870,8 @@ export class PortfolioExperience {
     if (this.destroyed) return;
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const elapsed = this.clock.elapsedTime;
-    for (const handle of this.modelHandles) handle.update(delta, elapsed);
+    const activeHandles = selectActiveModelHandles(this.state.screen, this.screenModels);
+    for (const handle of activeHandles) handle.update(delta, elapsed);
     if (this.detailHandle) {
       const targetScale = this.detailHandle.root.userData.targetScale ?? 1;
       const scale = damp(this.detailHandle.root.scale.x, targetScale, 7, delta);

@@ -16,18 +16,23 @@ describe('responsive scene layout', () => {
     expect((positions[2]?.y ?? 0) - (positions[4]?.y ?? 0)).toBeGreaterThanOrEqual(2.35);
   });
 
-  test('fits the wide cover inside portrait viewports', () => {
-    expect(getCoverScale(390, 844)).toBeLessThanOrEqual(0.35);
-    expect(getCoverScale(1440, 900)).toBe(0.54);
+  test('fills desktop and mobile viewports with the complete cover composition', () => {
+    expect(getCoverScale(390, 844)).toBe(0.62);
+    expect(getCoverScale(640, 640)).toBe(0.85);
+    expect(getCoverScale(1440, 900)).toBe(0.9);
   });
 
   test('returns only render settings consumed by the runtime', () => {
     expect(getRenderProfile(390, 844, 3)).toEqual({
       isMobile: true,
-      pixelRatio: 1.5,
+      pixelRatio: 1,
+      shadowMapSize: 512,
+    });
+    expect(getRenderProfile(1440, 900, 3)).toEqual({
+      isMobile: false,
+      pixelRatio: 1.25,
       shadowMapSize: 1024,
     });
-    expect(getRenderProfile(1440, 900, 3).pixelRatio).toBe(2);
   });
 
   test('fits detail models inside narrow mobile viewports', () => {

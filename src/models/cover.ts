@@ -12,6 +12,7 @@ const FOLDER_BOTTOM_Y = -2.2;
 const FRONT_REST_TILT = 0.08;
 const PAPER_REST_TILT = 0.08;
 const BASE_ASSEMBLY_YAW = 0.18;
+const FOLDER_REST_SCALE = 0.85;
 
 function rearFolderShape(): THREE.Shape {
   const shape = new THREE.Shape();
@@ -82,11 +83,12 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   const folderAssembly = new THREE.Group();
   folderAssembly.name = 'folder-assembly';
   folderAssembly.rotation.y = BASE_ASSEMBLY_YAW;
+  folderAssembly.scale.setScalar(FOLDER_REST_SCALE);
   root.add(folderAssembly);
   parts.set(folderAssembly.name, folderAssembly);
 
   const title = makeTextPanel(10.15, 1.6, 0.035, {
-    title: 'PORTFOLIO',
+    title: '电商运营',
     background: BLUE,
     foreground: PALE_YELLOW,
     align: 'center',
@@ -101,7 +103,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   parts.set(title.name, title);
 
   const yearScript = makeTextPanel(8.5, 0.72, 0.03, {
-    title: '2024                              Graphic Design',
+    title: '2026                         E-Commerce Portfolio',
     background: BLUE,
     foreground: CREAM,
     align: 'center',
@@ -127,7 +129,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   parts.set('folder-tab', folderBack);
 
   const tabLabelTexture = createTextTexture({
-    title: 'Graphic Design',
+    title: 'E-Commerce',
     background: '#E99908',
     foreground: '#9C7621',
     align: 'center',
@@ -187,16 +189,16 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   targets.push(frontFlap);
 
   const greeting = makeTextPanel(5.1, 1.55, 0.012, {
-    title: '老板您好',
-    subtitle: 'oɪn_njo',
+    title: '韩婧仪',
+    subtitle: 'GINNY · 电商运营\nE-COMMERCE OPERATIONS',
     background: YELLOW,
     foreground: '#E4AB25',
     accent: 'rgba(0,0,0,0)',
     align: 'center',
     width: 1250,
     height: 500,
-    titleScale: 0.36,
-    subtitleScale: 0.16,
+    titleScale: 0.28,
+    subtitleScale: 0.07,
     transparentBackground: true,
   });
   greeting.name = 'greeting-carrier';
@@ -207,7 +209,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   parts.set(greeting.name, greeting);
 
   const flapLabel = makeTextPanel(1.8, 0.5, 0.008, {
-    title: 'Folder',
+    title: 'RESUME',
     background: YELLOW,
     foreground: '#75674F',
     accent: 'rgba(0,0,0,0)',
@@ -226,7 +228,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   parts.set(flapLabel.name, flapLabel);
 
   const leftInfo = makeTextPanel(2.35, 1.08, 0.03, {
-    title: '求职者 七米', subtitle: 'BRAND DESIGN\n● 品牌设计', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 430, titleScale: 0.12, subtitleScale: 0.055, transparentBackground: true,
+    title: '求职者 韩婧仪', subtitle: 'E-COMMERCE OPERATIONS\n● 电商运营', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 430, titleScale: 0.12, subtitleScale: 0.055, transparentBackground: true,
   });
   leftInfo.name = 'left-info';
   leftInfo.position.set(-4.45, -1.48, 0.02);
@@ -234,7 +236,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   parts.set(leftInfo.name, leftInfo);
 
   const rightInfo = makeTextPanel(2.3, 1.75, 0.03, {
-    title: '手机号183xxxxxxxx', subtitle: 'VISUAL DESIGN\n● 视觉设计\n微信号ABCDEFG\nGRAPHIC DESIGN', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 650, titleScale: 0.095, subtitleScale: 0.042, transparentBackground: true,
+    title: '联系我', subtitle: '17335581033\n2938076274@qq.com\nSQL · Excel · SPSS · AI', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 650, titleScale: 0.095, subtitleScale: 0.042, transparentBackground: true,
   });
   rightInfo.name = 'right-info';
   rightInfo.position.set(4.42, -0.78, 0.02);
@@ -265,7 +267,12 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
       timeline
         .to(flapHinge.rotation, { x: 1.18, duration: 0.72, ease: 'power3.inOut' }, 0)
         .to(paperPivot.rotation, { x: 0.13, duration: 0.52, ease: 'power2.out' }, 0.08)
-        .to(folderAssembly.scale, { x: 1.08, y: 1.08, z: 1.08, duration: 0.72 }, 0)
+        .to(folderAssembly.scale, {
+          x: FOLDER_REST_SCALE * 1.08,
+          y: FOLDER_REST_SCALE * 1.08,
+          z: FOLDER_REST_SCALE * 1.08,
+          duration: 0.72,
+        }, 0)
         .to(fade, { value: 0, duration: 0.35, onUpdate: () => setOpacity(fade.value) }, 0.08);
     }),
     close: () => timelines.run((timeline) => {
@@ -274,7 +281,12 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
         .to(flapHinge.rotation, { x: FRONT_REST_TILT, duration: 0.55 }, 0)
         .to(paperPivot.rotation, { x: PAPER_REST_TILT, z: 0.008, duration: 0.48 }, 0)
         .to(folderAssembly.rotation, { x: 0, y: BASE_ASSEMBLY_YAW, z: 0, duration: 0.45 }, 0)
-        .to(folderAssembly.scale, { x: 1, y: 1, z: 1, duration: 0.5 }, 0);
+        .to(folderAssembly.scale, {
+          x: FOLDER_REST_SCALE,
+          y: FOLDER_REST_SCALE,
+          z: FOLDER_REST_SCALE,
+          duration: 0.5,
+        }, 0);
     }),
   }, (delta) => {
     const hover = root.userData.hovered && root.userData.reducedMotion !== true ? 1 : 0;

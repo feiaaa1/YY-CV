@@ -30,14 +30,14 @@ export function getRenderProfile(width: number, height: number, devicePixelRatio
   const isMobile = width / height < 0.85 || width < 720;
   return {
     isMobile,
-    pixelRatio: Math.min(devicePixelRatio, isMobile ? 1.5 : 2),
-    shadowMapSize: isMobile ? 1024 : 2048,
+    pixelRatio: Math.min(devicePixelRatio, isMobile ? 1 : 1.25),
+    shadowMapSize: isMobile ? 512 : 1024,
   };
 }
 
 export function getCoverScale(width: number, height: number): number {
-  if (width >= 720 && width / height >= 0.85) return 0.54;
-  return Math.min(0.48, 0.35 * Math.min(1, width / 390));
+  if (width >= 720 && width / height >= 0.85) return 0.9;
+  return Math.min(0.85, 0.62 * (width / 390));
 }
 
 export function getDetailScale(width: number, height: number): number {
