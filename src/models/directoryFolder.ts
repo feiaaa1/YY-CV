@@ -18,6 +18,39 @@ const FOLDER_WIDTH = 2.68;
 const REAR_BODY_HEIGHT = 2.15;
 const FRONT_HEIGHT = 1.53;
 const BOTTOM_SEAM_Y = -REAR_BODY_HEIGHT / 2;
+// Each sticker occupies roughly one quarter of the folder width while
+// preserving its source aspect ratio.
+// Large enough to read as a sticker cluster, while leaving room for five
+// overlapping pieces to span the folder from left to right.
+const STICKER_MAX_SIZE = FOLDER_WIDTH * 0.25 * 1.5;
+const STICKER_VERTICAL_OFFSET = 0.16;
+
+type StickerAsset = { file: string; width: number; height: number; scale: number };
+
+const brandStickers: StickerAsset[] = [
+  { file: 'reader_king_of_the_book_hill.png', width: 320, height: 294, scale: 1.08 },
+  { file: 'russian_cute_flower.png', width: 252, height: 258, scale: 0.82 },
+  { file: 'duoduo_come_on.png', width: 458, height: 267, scale: 1.16 },
+  { file: 'uplift_each_other.png', width: 799, height: 1560, scale: 0.94 },
+  { file: 'retro_boombox.png', width: 190, height: 155, scale: 0.76 },
+] as const;
+
+const uiWebStickers: StickerAsset[] = [
+  { file: 'retro_boombox.png', width: 190, height: 155, scale: 0.78 },
+  { file: 'reader_stellar_start.png', width: 234, height: 325, scale: 1.02 },
+  { file: 'russian_thinking_blob.png', width: 276, height: 247, scale: 0.88 },
+  { file: 'duoduo_power_duoduo.png', width: 460, height: 267, scale: 1.12 },
+  { file: 'presentation_ribbon.png', width: 299, height: 212, scale: 0.9 },
+  { file: 'retro_eye_heart.png', width: 164, height: 144, scale: 0.76 },
+];
+
+const posterStickers: StickerAsset[] = [
+  { file: 'reader_monster_reader.png', width: 234, height: 211, scale: 1.02 },
+  { file: 'duoduo_birthday.png', width: 464, height: 266, scale: 1.14 },
+  { file: 'russian_good_vibes.png', width: 154, height: 215, scale: 0.84 },
+  { file: 'productivity_pencil.png', width: 200, height: 142, scale: 0.92 },
+  { file: 'retro_lightning.png', width: 95, height: 110, scale: 0.76 },
+];
 
 function mixColor(color: string, target: string, amount: number): string {
   return `#${new THREE.Color(color).lerp(new THREE.Color(target), amount).getHexString()}`;
@@ -109,6 +142,49 @@ function addCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, vari
   });
 }
 
+function addStickerCollage(group: THREE.Group, parts: Map<string, THREE.Object3D>, assets: StickerAsset[], directory: string): void {
+  const xPositions = assets.length === 6 ? [-0.74, -0.45, -0.15, 0.16, 0.46, 0.75] : [-0.7, -0.34, 0, 0.36, 0.73];
+  const yPositions = assets.length === 6 ? [-0.08, 0.18, -0.03, 0.14, -0.02, 0.1] : [-0.08, 0.08, 0.1, 0.05, -0.1];
+  const rotations = assets.length === 6 ? [-0.22, 0.17, -0.06, 0.13, -0.15, 0.2] : [-0.22, 0.17, -0.06, 0.13, -0.15];
+
+  assets.forEach((sticker, index) => {
+    const aspect = sticker.width / sticker.height;
+    const maxSize = STICKER_MAX_SIZE * sticker.scale;
+    const width = aspect >= 1 ? maxSize : maxSize * aspect;
+    const height = aspect >= 1 ? maxSize / aspect : maxSize;
+    const texture = typeof document === 'undefined'
+      ? null
+      : new THREE.TextureLoader().load(`/assets/directory/${directory}/${sticker.file}`, (loaded) => {
+        loaded.colorSpace = THREE.SRGBColorSpace;
+        loaded.minFilter = THREE.LinearMipmapLinearFilter;
+        loaded.magFilter = THREE.LinearFilter;
+        loaded.anisotropy = 8;
+      });
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      color: texture ? '#FFFFFF' : '#F7F2E8',
+      transparent: true,
+      alphaTest: 0.025,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
+    const piece = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+    piece.name = `collage-piece-${index}`;
+    piece.position.set(
+      xPositions[index]!,
+      yPositions[index]! + STICKER_VERTICAL_OFFSET,
+      0.002 + index * 0.0015,
+    );
+    piece.rotation.z = rotations[index]!;
+    piece.renderOrder = 2 + index;
+    piece.userData.stickerSource = sticker.file;
+    piece.userData.normalizedSize = maxSize;
+    group.add(piece);
+    parts.set(piece.name, piece);
+  });
+}
+
 export function createDirectoryFolderModel(category: Category, variant: CollageVariant, reducedMotion = false): SculptModelHandle {
   const root = new THREE.Group();
   root.name = `directory-folder-${category.id}`;
@@ -138,8 +214,12 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
   const collageRoot = new THREE.Group();
   collageRoot.name = 'collage-root';
   // Keep collage layers behind the closed front pocket surface.
-  collageRoot.position.set(0, 0.48, 0.005);
-  addCollage(collageRoot, parts, variant);
+  const stickerVariant = variant === 'sport' || variant === 'business' || variant === 'technology';
+  collageRoot.position.set(0, stickerVariant ? 0.4 : 0.48, 0.04);
+  if (variant === 'sport') addStickerCollage(collageRoot, parts, brandStickers, 'brand-stickers');
+  else if (variant === 'business') addStickerCollage(collageRoot, parts, uiWebStickers, 'ui-web-stickers');
+  else if (variant === 'technology') addStickerCollage(collageRoot, parts, posterStickers, 'poster-stickers');
+  else addCollage(collageRoot, parts, variant);
   root.add(collageRoot);
   parts.set(collageRoot.name, collageRoot);
 
@@ -189,14 +269,19 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
       return timelines.run((timeline) => {
       timeline
         .to(pocketHinge.rotation, { x: 1.18, duration: 0.62, ease: 'back.inOut(1.1)' }, 0)
-        .to(collageRoot.position, { y: 0.78, z: 0.055, duration: 0.46, ease: 'power2.out' }, 0.08)
+        .to(collageRoot.position, {
+          y: 0.78,
+          z: stickerVariant ? 0.16 : 0.055,
+          duration: 0.46,
+          ease: 'power2.out',
+        }, 0.08)
         .to(collageRoot.scale, { x: 1.055, y: 1.055, duration: 0.42, ease: 'power2.out' }, 0.08);
       });
     },
     close: () => timelines.run((timeline) => {
       timeline
         .to(pocketHinge.rotation, { x: 0, duration: 0.46, ease: 'power3.inOut' }, 0)
-        .to(collageRoot.position, { y: 0.48, z: 0.04, duration: 0.38 }, 0)
+        .to(collageRoot.position, { y: stickerVariant ? 0.4 : 0.48, z: 0.04, duration: 0.38 }, 0)
         .to(collageRoot.scale, { x: 1, y: 1, duration: 0.35 }, 0);
     }).finally(() => { root.userData.opened = false; }),
   }, (delta) => {
@@ -206,7 +291,8 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
       const pointerY = THREE.MathUtils.clamp(Number(pointer.y) || 0, -1, 1);
       const hoverAngle = 0.38 + pointerY * 0.06;
       pocketHinge.rotation.x = damp(pocketHinge.rotation.x, hover ? hoverAngle : 0, 10, delta);
-      collageRoot.position.y = damp(collageRoot.position.y, hover ? 0.57 : 0.48, 9, delta);
+      const baseY = stickerVariant ? 0.4 : 0.48;
+      collageRoot.position.y = damp(collageRoot.position.y, hover ? baseY + 0.09 : baseY, 9, delta);
       collageRoot.position.z = damp(collageRoot.position.z, hover ? 0.048 : 0.04, 9, delta);
     }
   });

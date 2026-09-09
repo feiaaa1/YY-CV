@@ -17,8 +17,8 @@ describe('responsive scene layout', () => {
   });
 
   test('fits the wide cover inside portrait viewports', () => {
-    expect(getCoverScale(390, 844)).toBeLessThanOrEqual(0.54);
-    expect(getCoverScale(1440, 900)).toBe(1);
+    expect(getCoverScale(390, 844)).toBeLessThanOrEqual(0.35);
+    expect(getCoverScale(1440, 900)).toBe(0.54);
   });
 
   test('returns only render settings consumed by the runtime', () => {

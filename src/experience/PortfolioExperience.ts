@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createTimelineController, type TimelineController } from '../animation/timelines';
 import type { Category, PortfolioContent } from '../content/types';
 import { createCoverModel } from '../models/cover';
 import { createDirectoryFolderModel, type CollageVariant } from '../models/directoryFolder';
@@ -49,12 +50,14 @@ export class PortfolioExperience {
   private readonly pointerSession = createPointerSession<PointerSnapshot>();
   private readonly wheelGestureGate = createWheelGestureGate({ threshold: 24, cooldownMs: 450, idleResetMs: 180 });
   private readonly reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly directoryEntrance: TimelineController;
   private dragDistance = 0;
   private frameId = 0;
   private destroyed = false;
 
   constructor(private readonly container: HTMLElement, private readonly content: PortfolioContent) {
     const prefersReducedMotion = this.reducedMotionQuery.matches;
+    this.directoryEntrance = createTimelineController({ reducedMotion: () => this.state.reducedMotion });
     this.state = createExperienceState(prefersReducedMotion);
     this.scene.background = new THREE.Color('#2B82EE');
 
@@ -402,6 +405,85 @@ export class PortfolioExperience {
     if (action) this.dispatch(action);
   }
 
+  private playDirectoryEntrance(): Promise<void> {
+    const folders = this.content.categories
+      .map((category) => this.folderHandles.get(category.id))
+      .filter((handle): handle is SculptModelHandle => handle !== undefined);
+
+    return this.directoryEntrance.run((timeline) => {
+      folders.forEach((handle, folderIndex) => {
+        const root = handle.root;
+        const targetPosition = root.position.clone();
+        const targetScale = root.scale.x;
+        const targetRotation = root.rotation.z;
+        const folderStart = folderIndex * 0.11;
+
+        timeline
+          .fromTo(root.position, {
+            x: targetPosition.x,
+            y: targetPosition.y - 0.72,
+            z: -0.55,
+          }, {
+            x: targetPosition.x,
+            y: targetPosition.y,
+            z: targetPosition.z,
+            ease: 'back.out(1.25)',
+          }, folderStart)
+          .fromTo(root.scale, {
+            x: targetScale * 0.76,
+            y: targetScale * 0.76,
+            z: targetScale * 0.76,
+          }, {
+            x: targetScale,
+            y: targetScale,
+            z: targetScale,
+            ease: 'back.out(1.35)',
+          }, folderStart)
+          .fromTo(root.rotation, {
+            z: targetRotation + (folderIndex % 2 === 0 ? -0.08 : 0.08),
+          }, {
+            z: targetRotation,
+            ease: 'power2.out',
+          }, folderStart);
+
+        const collage = handle.parts.get('collage-root');
+        collage?.children.forEach((piece, pieceIndex) => {
+          const target = piece.position.clone();
+          const targetPieceScale = piece.scale.clone();
+          const targetPieceRotation = piece.rotation.z;
+          const pieceStart = folderStart + 0.16 + pieceIndex * 0.035;
+          timeline
+            .fromTo(piece.position, {
+              x: target.x,
+              y: target.y - 0.34,
+              z: target.z - 0.035,
+            }, {
+              x: target.x,
+              y: target.y,
+              z: target.z,
+              ease: 'back.out(1.55)',
+            }, pieceStart)
+            .fromTo(piece.scale, {
+              x: targetPieceScale.x * 0.28,
+              y: targetPieceScale.y * 0.28,
+              z: targetPieceScale.z * 0.28,
+            }, {
+              x: targetPieceScale.x,
+              y: targetPieceScale.y,
+              z: targetPieceScale.z,
+              ease: 'back.out(1.8)',
+            }, pieceStart)
+            .fromTo(piece.rotation, {
+              z: targetPieceRotation + (pieceIndex % 2 === 0 ? -0.2 : 0.2),
+            }, {
+              z: targetPieceRotation,
+              ease: 'back.out(1.4)',
+            }, pieceStart);
+        });
+      });
+    });
+  }
+
   private async dispatch(action: ExperienceAction): Promise<void> {
     if (this.state.transitionLocked && action.type !== 'SET_TRANSITION_LOCK') return;
 
@@ -412,6 +494,7 @@ export class PortfolioExperience {
           this.applyAction(action);
           this.coverHandle.root.visible = false;
           this.directoryGroup.visible = true;
+          await this.playDirectoryEntrance();
         },
         () => {
           this.applyAction({ type: 'ENTER_DIRECTORY' });
@@ -790,6 +873,7 @@ export class PortfolioExperience {
       clearTimeout(this.toastTimer);
       this.toastTimer = null;
     }
+    this.directoryEntrance.killActiveTimeline();
     this.aboutPage?.dispose();
     this.aboutPage = null;
     for (const handle of this.modelHandles) handle.dispose();

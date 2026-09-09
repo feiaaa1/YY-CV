@@ -228,7 +228,7 @@ describe('procedural model contracts', () => {
     expect(rearDepth).toBeLessThan(0.105);
     expect(frontDepth).toBeLessThan(0.115);
     expect(frontMaterial.color.getHex()).not.toBe(rearMaterial.color.getHex());
-    expect([...folder.parts.keys()].filter((id) => id.startsWith('collage-backing-'))).toHaveLength(5);
+    expect([...folder.parts.keys()].filter((id) => id.startsWith('collage-piece-'))).toHaveLength(6);
     expect(outsideLabel.position.y).toBeGreaterThan(rearBottom - 0.27);
     expect(outsideLabel.position.y).toBeLessThan(rearBottom - 0.12);
 
@@ -245,6 +245,55 @@ describe('procedural model contracts', () => {
       expect(Math.min(size.x, size.y, size.z)).toBeLessThan(0.012);
     }
     folder.dispose();
+  });
+
+  test('first directory folder uses five equally sized sticker assets inside the pocket', () => {
+    const folder = createDirectoryFolderModel(portfolioContent.categories[0]!, 'sport', true);
+    const collage = folder.parts.get('collage-root') as THREE.Group;
+    const pieces = [...folder.parts.entries()]
+      .filter(([name]) => name.startsWith('collage-piece-'))
+      .map(([, object]) => object as THREE.Mesh);
+
+    expect(pieces).toHaveLength(5);
+    expect(pieces.map((piece) => piece.userData.stickerSource)).toEqual([
+      'reader_king_of_the_book_hill.png',
+      'russian_cute_flower.png',
+      'duoduo_come_on.png',
+      'uplift_each_other.png',
+      'retro_boombox.png',
+    ]);
+
+    folder.root.updateMatrixWorld(true);
+    for (const piece of pieces) {
+      piece.geometry.computeBoundingBox();
+      const size = piece.geometry.boundingBox!.getSize(new THREE.Vector3());
+      const bounds = new THREE.Box3().setFromObject(piece);
+      expect(Math.max(size.x, size.y)).toBeCloseTo(Number(piece.userData.normalizedSize));
+      expect(Number(piece.userData.normalizedSize)).toBeGreaterThanOrEqual(0.52 * 1.5 * 0.76);
+      expect(bounds.min.x).toBeGreaterThan(-1.34);
+      expect(bounds.max.x).toBeLessThan(1.34);
+      expect(bounds.max.y).toBeLessThan(1.42);
+      expect(collage.position.z + piece.position.z).toBeGreaterThan(0.015);
+      expect(0.048 + piece.position.z).toBeLessThan(0.06);
+    }
+    expect(new Set(pieces.map((piece) => piece.rotation.z)).size).toBe(5);
+    expect(new Set(pieces.map((piece) => piece.userData.normalizedSize)).size).toBeGreaterThan(1);
+    expect(Math.max(...pieces.map((piece) => piece.position.y)) - Math.min(...pieces.map((piece) => piece.position.y))).toBeGreaterThan(0.05);
+    expect(pieces.some((piece) => piece.position.z > 0.006)).toBe(true);
+    expect(Math.min(...pieces.map((piece) => piece.position.x))).toBeLessThan(-0.5);
+    expect(Math.max(...pieces.map((piece) => piece.position.x))).toBeGreaterThan(0.5);
+    folder.dispose();
+  });
+
+  test('second and third directory folders use their supplied sticker sets', () => {
+    const uiFolder = createDirectoryFolderModel(portfolioContent.categories[1]!, 'business', true);
+    const posterFolder = createDirectoryFolderModel(portfolioContent.categories[2]!, 'technology', true);
+    expect([...uiFolder.parts.values()].filter((object) => object.userData.stickerSource)).toHaveLength(6);
+    expect([...posterFolder.parts.values()].filter((object) => object.userData.stickerSource)).toHaveLength(5);
+    expect(uiFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('retro_boombox.png');
+    expect(posterFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('reader_monster_reader.png');
+    uiFolder.dispose();
+    posterFolder.dispose();
   });
 
   test('directory hover opens only the front panel while the folder root stays fixed', () => {

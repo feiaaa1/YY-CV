@@ -171,6 +171,17 @@ describe('experience lifecycle', () => {
     expect(body).toMatch(/this\.stopAnimation\(\);/);
   });
 
+  test('animates directory folders and their collage pieces on entry', () => {
+    const body = getMethodBody(experienceSource, 'private playDirectoryEntrance');
+
+    expect(body).toMatch(/this\.content\.categories/);
+    expect(body).toMatch(/folders\.forEach/);
+    expect(body).toMatch(/handle\.parts\.get\('collage-root'\)/);
+    expect(body).toMatch(/collage\?\.children\.forEach/);
+    expect(experienceSource).toContain('await this.playDirectoryEntrance();');
+    expect(experienceSource).toContain('this.directoryEntrance.killActiveTimeline();');
+  });
+
   test('holds the camera still instead of tracking the pointer under reduced motion', () => {
     const body = getMethodBody(experienceSource, 'private readonly animate');
     const parallax = body.slice(body.indexOf('const tracksPointer'));

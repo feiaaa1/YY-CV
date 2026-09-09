@@ -36,8 +36,8 @@ export function getRenderProfile(width: number, height: number, devicePixelRatio
 }
 
 export function getCoverScale(width: number, height: number): number {
-  if (width >= 720 && width / height >= 0.85) return 1;
-  return Math.min(0.72, 0.54 * Math.min(1, width / 390));
+  if (width >= 720 && width / height >= 0.85) return 0.54;
+  return Math.min(0.48, 0.35 * Math.min(1, width / 390));
 }
 
 export function getDetailScale(width: number, height: number): number {
