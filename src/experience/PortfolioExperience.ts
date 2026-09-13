@@ -778,6 +778,10 @@ export class PortfolioExperience {
 
   private renderAccessibilityControls(focusFirstControl = false): void {
     const descriptor = describeScreen(this.content, this.state);
+    const education = this.state.screen === 'detail'
+      ? this.currentCategory()?.scrapbookPages?.[this.state.projectIndex]?.education
+      : undefined;
+    this.accessibilityLayer.classList.toggle('sr-controls--education', Boolean(education));
     this.accessibilityLayer.replaceChildren(this.liveRegion, this.semanticRegion);
     this.liveRegion.textContent = descriptor.status;
 
@@ -789,6 +793,35 @@ export class PortfolioExperience {
       return paragraph;
     });
     this.semanticRegion.replaceChildren(heading, ...details);
+    if (education) {
+      const element = (tag: 'p' | 'h2' | 'h3', text: string) => {
+        const node = document.createElement(tag);
+        node.textContent = text;
+        return node;
+      };
+      const entry = education.experience;
+      this.semanticRegion.replaceChildren(
+        element('p', '02 / 学习经历'), element('h2', entry.school),
+        element('p', entry.period), element('p', `学院：${entry.college}`),
+        element('p', `专业：${entry.major}`),
+        element('p', `绩点 ${entry.gpa} · 排名 ${entry.rank}`),
+      );
+      if (entry.rankNote) this.semanticRegion.append(element('p', entry.rankNote));
+      if (entry.honors.length) {
+        this.semanticRegion.append(element('h3', '所获荣誉'), ...entry.honors.map((honor) => element('p', honor)));
+      }
+      let paragraph: HTMLElement | undefined;
+      for (const line of education.lines) {
+        if (line.kind === 'heading') {
+          this.semanticRegion.append(element('h3', line.text));
+          paragraph = undefined;
+        } else if (line.marker || !paragraph) {
+          paragraph = element('p', `${line.marker ? `${line.marker}. ` : ''}${line.text}`);
+          this.semanticRegion.append(paragraph);
+        } else paragraph.textContent += line.text;
+      }
+      this.semanticRegion.scrollTop = 0;
+    }
 
     const buttons = descriptor.controls.map((control) => {
       const button = document.createElement('button');

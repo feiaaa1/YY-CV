@@ -59,8 +59,8 @@ describe('screen semantics', () => {
   test('omits the scrapbook previous control on the first page', () => {
     const control = labels(stateOn(scrapbookId, { projectIndex: 0 }));
 
-    expect(control).not.toContain('上一个项目');
-    expect(control).toContain('下一个项目');
+    expect(control).not.toContain('上一页');
+    expect(control).toContain('下一页');
   });
 
   test('omits the scrapbook next control on the last page', () => {
@@ -68,8 +68,8 @@ describe('screen semantics', () => {
     const lastIndex = category.scrapbookPages!.length - 1;
     const control = labels(stateOn(scrapbookId, { projectIndex: lastIndex }));
 
-    expect(control).toContain('上一个项目');
-    expect(control).not.toContain('下一个项目');
+    expect(control).toContain('上一页');
+    expect(control).not.toContain('下一页');
   });
 
   test('keeps both paging controls for cyclic book and ticket presentations', () => {

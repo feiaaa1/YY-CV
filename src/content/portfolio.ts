@@ -1,5 +1,7 @@
 import type { Category, PortfolioContent } from './types';
 import { aboutProfile } from './profile';
+import { educationExperiences } from './education';
+import { createEducationPages } from '../education/layout';
 
 const project = (
   categoryId: string,
@@ -37,109 +39,18 @@ const categories: Category[] = [
   },
   {
     id: 'ui-web',
-    title: { zh: 'UI / 网页', en: 'UI & Web' },
+    title: { zh: '校园经历', en: 'Campus Experience' },
     description: { zh: '校园经历', en: 'Campus Experience' },
-    shortTitle: 'UI / WEB',
+    shortTitle: 'CAMPUS',
     color: '#77E3A0',
     secondaryColor: '#C6FF72',
     presentation: 'scrapbook',
     projects: [
-      project('ui-web', 0, '城市漫游应用', 'City Walk App', '#2D85F6', ['PRODUCT', 'MOBILE']),
-      project('ui-web', 1, '独立杂志网站', 'Independent Journal', '#FF7D58', ['EDITORIAL', 'WEB']),
-      project('ui-web', 2, '创意工具面板', 'Creative Toolkit', '#B56BE8', ['DASHBOARD', 'UX']),
+      project('ui-web', 0, '天津仁爱学院', 'Renai College', '#BCD6BB', ['学习经历']),
+      project('ui-web', 1, '荣誉与奖项', 'Honors & Awards', '#EDBCBE', ['校园经历']),
+      project('ui-web', 2, '北京体育大学', 'Beijing Sport University', '#BDCEE8', ['学术实践']),
     ],
-    scrapbookPages: [
-      {
-        id: 'hello',
-        title: { zh: '你好，作品集', en: 'Hello, Portfolio' },
-        subtitle: { zh: '关于我的数字设计、兴趣与视觉语言。', en: 'A scrapbook of digital design, interests and visual language.' },
-        kicker: 'ABOUT ME',
-        palette: ['#E9E6D8', '#BFD6F4', '#F5B7D1'],
-        motif: 'intro',
-        leftContent: {
-          mainText: 'Welcome to my design portfolio. A collection of visual thinking and creative explorations.',
-          photo: { label: 'INTRO', subtitle: 'PORTFOLIO\nOVERVIEW' },
-          note: { title: '欢迎', subtitle: 'ABOUT ME' },
-        },
-        rightContent: {
-          noteTitle: 'NOTE',
-          bullets: ['visual stories', 'playful systems', 'digital craft', 'soft colors'],
-          decorativeText: ['H', 'E', 'L', 'L', 'O', '!', '!'],
-        },
-      },
-      {
-        id: 'mobile',
-        title: { zh: '移动产品', en: 'Mobile Product' },
-        subtitle: { zh: '城市漫游应用的体验结构与关键界面。', en: 'Experience structure and key screens for a city-walk app.' },
-        kicker: 'UI / PRODUCT',
-        palette: ['#E5F1E8', '#7CC7B5', '#F0CC75'],
-        motif: 'mobile',
-        leftContent: {
-          mainText: 'Mobile-first design focusing on intuitive navigation and delightful micro-interactions.',
-          photo: { label: '01', subtitle: 'MOBILE\nINTERFACE' },
-          note: { title: '移动端', subtitle: 'UI DESIGN' },
-        },
-        rightContent: {
-          noteTitle: 'FEATURES',
-          bullets: ['user journeys', 'map discovery', 'mobile components', 'prototype tests'],
-          decorativeText: ['M', 'O', 'B', 'I', 'L', 'E', '✓'],
-        },
-      },
-      {
-        id: 'editorial',
-        title: { zh: '编辑网站', en: 'Editorial Website' },
-        subtitle: { zh: '独立内容网站的网格、字体和阅读节奏。', en: 'Grid, typography and reading rhythm for an independent journal.' },
-        kicker: 'WEB / EDITORIAL',
-        palette: ['#F2E3DB', '#EF876F', '#88A7D0'],
-        motif: 'editorial',
-        leftContent: {
-          mainText: 'Typography-driven layouts with careful attention to reading experience and content hierarchy.',
-          photo: { label: '02', subtitle: 'EDITORIAL\nLAYOUT' },
-          note: { title: '编辑设计', subtitle: 'WEB LAYOUT' },
-        },
-        rightContent: {
-          noteTitle: 'SYSTEM',
-          bullets: ['modular grid', 'reading rhythm', 'responsive type', 'content archive'],
-          decorativeText: ['E', 'D', 'I', 'T', 'O', 'R', '✦'],
-        },
-      },
-      {
-        id: 'process',
-        title: { zh: '设计过程', en: 'Design Process' },
-        subtitle: { zh: '从研究、草图到组件系统和可用性验证。', en: 'From research and sketches to components and usability checks.' },
-        kicker: 'PROCESS',
-        palette: ['#E7E2F2', '#9B82CA', '#E6C65F'],
-        motif: 'process',
-        leftContent: {
-          mainText: 'A systematic approach from user research through prototyping to final implementation.',
-          photo: { label: '03', subtitle: 'DESIGN\nPROCESS' },
-          note: { title: '设计流程', subtitle: 'METHODOLOGY' },
-        },
-        rightContent: {
-          noteTitle: 'STEPS',
-          bullets: ['research', 'wireframes', 'design tokens', 'usability checks'],
-          decorativeText: ['P', 'R', 'O', 'C', 'E', 'S', 'S'],
-        },
-      },
-      {
-        id: 'thanks',
-        title: { zh: '感谢翻阅', en: 'Thank You' },
-        subtitle: { zh: '期待与你一起完成有温度的数字体验。', en: 'Let us make thoughtful digital experiences together.' },
-        kicker: 'CONTACT',
-        palette: ['#E8EBE2', '#89A9A0', '#F1A7B7'],
-        motif: 'contact',
-        leftContent: {
-          mainText: 'Thank you for viewing my work. I am available for freelance projects and collaborations.',
-          photo: { label: '04', subtitle: 'GET IN\nTOUCH' },
-          note: { title: '联系我', subtitle: 'CONTACT INFO' },
-        },
-        rightContent: {
-          noteTitle: 'CONNECT',
-          bullets: ['say hello', 'new projects', 'collaboration', 'thank you'],
-          decorativeText: ['T', 'H', 'A', 'N', 'K', 'S', '♥'],
-        },
-      },
-    ],
+    scrapbookPages: createEducationPages(educationExperiences),
   },
   {
     id: 'poster-editorial',

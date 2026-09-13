@@ -708,7 +708,32 @@ describe('procedural model contracts', () => {
   });
 
 
-  test('scrapbook exposes five bounded page states and spine-anchored navigation', async () => {
+  test('scrapbook print coordinates cover the entire paper, including both sides of a turning leaf', () => {
+    const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
+    for (const name of ['active-left-page-print', 'active-right-page-print', 'turning-page-front', 'turning-page-back']) {
+      const mesh = scrapbook.root.getObjectByName(name) as THREE.Mesh;
+      const uv = mesh.geometry.getAttribute('uv');
+      const u = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
+      const v = Array.from({ length: uv.count }, (_, i) => uv.getY(i));
+      expect(Math.min(...u)).toBeCloseTo(0);
+      expect(Math.max(...u)).toBeCloseTo(1);
+      expect(Math.min(...v)).toBeCloseTo(0);
+      expect(Math.max(...v)).toBeCloseTo(1);
+    }
+    scrapbook.dispose();
+  });
+
+  test('scrapbook supports a single spread with no active page-turn target', async () => {
+    const category = portfolioContent.categories[1]!;
+    const scrapbook = createScrapbookModel({ ...category, scrapbookPages: category.scrapbookPages!.slice(0, 1) }, true);
+    expect(scrapbook.parts.get('page-counter')?.userData.pageLabel).toBe('1 / 1 Pages');
+    expect(scrapbook.interactiveTargets.some((target) => ['next-project', 'previous-project'].includes(target.userData.action))).toBe(false);
+    await scrapbook.actions.setProject(9);
+    expect(scrapbook.root.userData.projectIndex).toBe(0);
+    scrapbook.dispose();
+  });
+
+  test('scrapbook exposes content-driven bounded page states and spine-anchored navigation', async () => {
     const category = portfolioContent.categories[1]!;
     const scrapbook = createScrapbookModel(category, true);
 
@@ -724,10 +749,11 @@ describe('procedural model contracts', () => {
     expect(scrapbook.interactiveTargets.some((target) => target.userData.action === 'next-project')).toBe(true);
     expect(scrapbook.root.userData.projectIndex).toBe(0);
 
-    await scrapbook.actions.setProject(4);
-    expect(scrapbook.root.userData.projectIndex).toBe(4);
-    expect(scrapbook.parts.get('page-counter')?.userData.pageLabel).toBe('5 / 5 Pages');
-    expect(scrapbook.parts.get('active-left-page')?.userData.pageId).toBe('thanks');
+    const last = category.scrapbookPages!.length - 1;
+    await scrapbook.actions.setProject(99);
+    expect(scrapbook.root.userData.projectIndex).toBe(last);
+    expect(scrapbook.parts.get('page-counter')?.userData.pageLabel).toBe(`${last + 1} / ${last + 1} Pages`);
+    expect(scrapbook.parts.get('active-left-page')?.userData.pageId).toBe(category.scrapbookPages![last]!.id);
 
     await scrapbook.actions.setProject(-3);
     expect(scrapbook.root.userData.projectIndex).toBe(0);

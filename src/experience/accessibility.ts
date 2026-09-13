@@ -85,14 +85,21 @@ function describeScrapbookDetail(category: Category, state: ExperienceState): Om
   const controls: ScreenControl[] = [];
 
   if (state.projectIndex > 0) {
-    controls.push({ label: '上一个项目', action: { type: 'PREVIOUS_PROJECT', projectCount: count } });
+    controls.push({ label: page?.education ? '上一页' : '上一个项目', action: { type: 'PREVIOUS_PROJECT', projectCount: count } });
   }
   if (state.projectIndex < count - 1) {
-    controls.push({ label: '下一个项目', action: { type: 'NEXT_PROJECT', projectCount: count } });
+    controls.push({ label: page?.education ? '下一页' : '下一个项目', action: { type: 'NEXT_PROJECT', projectCount: count } });
   }
 
   const details = page
-    ? [`${page.title.zh} / ${page.title.en}`, page.subtitle.zh, `第 ${state.projectIndex + 1} 页，共 ${count} 页。`]
+    ? [`${page.title.zh} / ${page.title.en}`, page.subtitle.zh,
+      ...(page.education ? [
+        page.education.experience.college,
+        `绩点 ${page.education.experience.gpa}，排名 ${page.education.experience.rank} ${page.education.experience.rankNote ?? ''}`,
+        ...page.education.experience.honors,
+        ...page.education.lines.map((line) => line.text),
+      ] : []),
+      `第 ${state.projectIndex + 1} 页，共 ${count} 页。`]
     : [`第 ${state.projectIndex + 1} 页，共 ${count} 页。`];
 
   return {

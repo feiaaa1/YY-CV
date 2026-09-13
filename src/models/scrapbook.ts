@@ -3,6 +3,7 @@ import type { Category, ScrapbookPage } from '../content/types';
 import { createTimelineController } from '../animation/timelines';
 import { makeExtrudedMesh, makeTextPanel, roundedRectShape, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
+import { paintEducationPage } from '../education/paint';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -100,6 +101,10 @@ function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: num
 function makeSpreadTexture(page: ScrapbookPage, side: 'left' | 'right'): THREE.Texture {
   const background = side === 'left' ? '#F1EFE5' : '#E8E3CF';
   return makeCanvasTexture(1200, 1420, background, (context, width, height) => {
+    if (page.education) {
+      paintEducationPage(context, page, side);
+      return;
+    }
     drawPaperPattern(context, width, height, page, side);
     if (side === 'left') {
       // Header with kicker
@@ -215,6 +220,16 @@ function makePatternTexture(index: number): THREE.Texture {
   });
 }
 
+function makePrintGeometry(width: number, height: number): THREE.ShapeGeometry {
+  const geometry = new THREE.ShapeGeometry(roundedRectShape(width, height, 0.16));
+  const position = geometry.getAttribute('position');
+  const uv = geometry.getAttribute('uv');
+  for (let i = 0; i < position.count; i++) {
+    uv.setXY(i, position.getX(i) / width + 0.5, position.getY(i) / height + 0.5);
+  }
+  return geometry;
+}
+
 function createRoundedPage(
   name: string,
   width: number,
@@ -228,7 +243,7 @@ function createRoundedPage(
   body.name = `${name}-body`;
   body.position.z = -0.04;
   page.add(body);
-  const printGeometry = new THREE.ShapeGeometry(roundedRectShape(width - 0.045, height - 0.045, 0.16));
+  const printGeometry = makePrintGeometry(width - 0.045, height - 0.045);
   const print = new THREE.Mesh(printGeometry, new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
   print.name = `${name}-print`;
   print.position.z = 0.055;
@@ -253,16 +268,15 @@ function createTurningPage(frontTexture: THREE.Texture, backTexture: THREE.Textu
   const body = makeExtrudedMesh(roundedRectShape(4.25, 5.18, 0.18), '#DCD7C9', 0.075, 0.025);
   body.position.z = -0.04;
   page.add(body);
-  const shape = roundedRectShape(4.205, 5.135, 0.16);
   const front = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape),
+    makePrintGeometry(4.205, 5.135),
     new THREE.MeshBasicMaterial({ map: frontTexture, toneMapped: false }),
   );
   front.name = 'turning-page-front';
   front.position.z = 0.055;
   page.add(front);
   const back = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape),
+    makePrintGeometry(4.205, 5.135),
     new THREE.MeshBasicMaterial({ map: backTexture, toneMapped: false }),
   );
   back.name = 'turning-page-back';
@@ -303,7 +317,7 @@ function makeRoundControl(id: string, label: string, action: string): THREE.Grou
 
 export function createScrapbookModel(category: Category, reducedMotion = false): SculptModelHandle {
   const pages = category.scrapbookPages ?? [];
-  if (pages.length !== 5) throw new Error(`Scrapbook category ${category.id} requires exactly five pages.`);
+  if (!pages.length) throw new Error(`Scrapbook category ${category.id} requires at least one page.`);
 
   const root = new THREE.Group();
   root.name = `scrapbook-${category.id}`;
@@ -357,7 +371,7 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   turningPivot.position.z = 0.25;
   const turningPage = createTurningPage(
     makeSpreadTexture(pages[0]!, 'right'),
-    makeSpreadTexture(pages[1]!, 'left'),
+    makeSpreadTexture(pages[1] ?? pages[0]!, 'left'),
   );
   turningPage.position.x = 2.1;
   turningPage.visible = false;
@@ -415,12 +429,15 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   inactiveLeaves.forEach((leaf) => leftPivot.attach(leaf));
   leftPivot.attach(leftCollage);
   rightPivot.attach(rightCollage);
+  // Education text uses the full paper area; sample photo cards would obscure it.
+  leftCollage.visible = !pages[0]!.education;
+  rightCollage.visible = !pages[0]!.education;
 
   const pageCounter = makeTextPanel(1.72, 0.46, 0.045, {
-    title: '1 / 5 Pages', background: '#414D6A', foreground: '#FFFDF2', align: 'center', width: 900, height: 250,
+    title: `1 / ${pages.length}`, titleScale: 0.32, background: '#414D6A', foreground: '#FFFDF2', align: 'center', width: 900, height: 250,
   });
   pageCounter.name = 'page-counter';
-  pageCounter.userData.pageLabel = '1 / 5 Pages';
+  pageCounter.userData.pageLabel = `1 / ${pages.length} Pages`;
   pageCounter.position.set(0, 3.18, -0.02);
   root.add(pageCounter); parts.set(pageCounter.name, pageCounter);
 
@@ -438,6 +455,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
 
   const applyPage = (index: number): void => {
     const page = pages[index]!;
+    leftCollage.visible = !page.education;
+    rightCollage.visible = !page.education;
     root.userData.projectIndex = index;
     leftPage.userData.pageId = page.id;
     rightPage.userData.pageId = page.id;
@@ -460,12 +479,13 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     const pageLabel = `${index + 1} / ${pages.length} Pages`;
     pageCounter.userData.pageLabel = pageLabel;
     updateTextPanel(pageCounter, {
-      title: pageLabel, background: '#414D6A', foreground: '#FFFDF2', align: 'center', width: 900, height: 250,
+      title: `${index + 1} / ${pages.length}`, titleScale: 0.32, background: '#414D6A', foreground: '#FFFDF2', align: 'center', width: 900, height: 250,
     });
     leftPage.userData.action = index > 0 ? 'previous-project' : undefined;
     rightPage.userData.action = index < pages.length - 1 ? 'next-project' : undefined;
   };
 
+  applyPage(0);
   let hovered = false;
   const handle = createHandle(root, parts, targets, {
     setHovered: (value) => { hovered = value; },

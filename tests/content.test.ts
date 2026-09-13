@@ -45,12 +45,11 @@ describe('portfolio content', () => {
     expect(new Set(experiences?.map(({ id }) => id) ?? []).size).toBe(4);
   });
 
-  test('provides five distinct scrapbook pages for the UI and web folder', () => {
-    const category = portfolioContent.categories.find(({ id }) => id === 'ui-web');
-    expect(category?.scrapbookPages).toHaveLength(5);
-    expect(new Set(category?.scrapbookPages?.map(({ id }) => id)).size).toBe(5);
-    expect(category?.scrapbookPages?.map(({ title }) => title.en)).toEqual([
-      'Hello, Portfolio', 'Mobile Product', 'Editorial Website', 'Design Process', 'Thank You',
-    ]);
+  test('provides learning experience spreads instead of sample design projects', () => {
+    const pages = portfolioContent.categories[1]!.scrapbookPages!;
+    expect(pages.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(pages.map(({ id }) => id)).size).toBe(pages.length);
+    expect(new Set(pages.map((page) => page.title.zh))).toEqual(new Set(['天津仁爱学院', '北京体育大学（211）']));
+    expect(pages.every((page) => page.education)).toBe(true);
   });
 });

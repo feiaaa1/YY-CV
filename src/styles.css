@@ -63,6 +63,57 @@ canvas {
   pointer-events: none;
 }
 
+/* Keep the same page state and controls while giving narrow screens readable text. */
+@media (max-width: 700px) {
+  .sr-controls--education {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+    clip: auto;
+    white-space: normal;
+    color: #303e42;
+    background: #f8f5ec;
+    font-size: 16px;
+    line-height: 1.8;
+  }
+  .sr-controls--education > div:first-child {
+    grid-column: 1 / -1;
+    color: #626b68;
+    font-size: 13px;
+  }
+  .sr-controls--education > div:nth-child(2) {
+    grid-column: 1 / -1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 8px;
+  }
+  .sr-controls--education h2 { margin: 18px 0 8px; font-size: 27px; line-height: 1.4; }
+  .sr-controls--education h3 { margin: 28px 0 12px; font-size: 19px; }
+  .sr-controls--education p { margin: 12px 0; overflow-wrap: anywhere; }
+  .sr-controls--education button {
+    grid-row: 3;
+    min-height: 48px;
+    border: 0;
+    border-radius: 8px;
+    color: #303e42;
+    background: #bcd6bb;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .sr-controls--education button:last-child { grid-column: 3; background: #e9e5da; }
+  .sr-controls--education button:focus-visible { outline: 3px solid #466c50; outline-offset: 2px; }
+}
+
 .scene-toast[data-visible='true'] {
   opacity: 1;
   transform: translate(-50%, 0);

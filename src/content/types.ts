@@ -15,6 +15,7 @@ export type Project = {
 };
 
 export type ScrapbookPage = {
+  education?: import('../education/layout').EducationSpread;
   id: string;
   title: LocalizedText;
   subtitle: LocalizedText;
