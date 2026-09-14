@@ -18,6 +18,8 @@ import {
 import { resolveInteractionAction } from './interactions';
 import { countProjects, describeScreen } from './accessibility';
 import { findCategory, hasCategory } from './categories';
+import { createEducationArtworkElement, hasEducationArtwork, loadEducationArtwork } from '../education/artwork';
+import { hasHonorsArtwork, loadHonorsArtwork } from '../education/honorsArtwork';
 import { runLockedTransition } from './transitions';
 import {
   createExperienceState,
@@ -453,6 +455,7 @@ export class PortfolioExperience {
     if (this.finishTag.visible && this.directoryGroup.visible) candidates.push(this.finishTag);
     const intersections = this.raycaster.intersectObjects(candidates, true);
     for (const intersection of intersections) {
+      if (!this.isVisibleInScene(intersection.object)) continue;
       let object: THREE.Object3D | null = intersection.object;
       while (object && !object.userData.action) object = object.parent;
       if (object?.userData.action) return object;
@@ -717,6 +720,8 @@ export class PortfolioExperience {
       }
       case 'scrapbook': {
         const { createScrapbookModel } = await import('../models/scrapbook');
+        if (category.scrapbookPages?.some(hasEducationArtwork)) await loadEducationArtwork();
+        if (category.scrapbookPages?.some(hasHonorsArtwork)) await loadHonorsArtwork();
         this.detailHandle = createScrapbookModel(category, this.state.reducedMotion);
         break;
       }
@@ -778,9 +783,10 @@ export class PortfolioExperience {
 
   private renderAccessibilityControls(focusFirstControl = false): void {
     const descriptor = describeScreen(this.content, this.state);
-    const education = this.state.screen === 'detail'
-      ? this.currentCategory()?.scrapbookPages?.[this.state.projectIndex]?.education
+    const artworkPage = this.state.screen === 'detail'
+      ? this.currentCategory()?.scrapbookPages?.[this.state.projectIndex]
       : undefined;
+    const education = artworkPage?.education;
     this.accessibilityLayer.classList.toggle('sr-controls--education', Boolean(education));
     this.accessibilityLayer.replaceChildren(this.liveRegion, this.semanticRegion);
     this.liveRegion.textContent = descriptor.status;
@@ -809,6 +815,9 @@ export class PortfolioExperience {
       if (entry.rankNote) this.semanticRegion.append(element('p', entry.rankNote));
       if (entry.honors.length) {
         this.semanticRegion.append(element('h3', '所获荣誉'), ...entry.honors.map((honor) => element('p', honor)));
+      }
+      if (hasEducationArtwork(this.currentCategory()!.scrapbookPages![this.state.projectIndex]!)) {
+        this.semanticRegion.replaceChildren(createEducationArtworkElement());
       }
       let paragraph: HTMLElement | undefined;
       for (const line of education.lines) {

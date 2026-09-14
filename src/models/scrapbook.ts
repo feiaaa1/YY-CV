@@ -4,6 +4,8 @@ import { createTimelineController } from '../animation/timelines';
 import { makeExtrudedMesh, makeTextPanel, roundedRectShape, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
 import { paintEducationPage } from '../education/paint';
+import { createEducationStickerLayers, hasEducationArtwork, paintEducationArtwork } from '../education/artwork';
+import { createHonorsStickerLayers, hasHonorsArtwork, paintHonorsArtwork } from '../education/honorsArtwork';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -98,9 +100,11 @@ function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: num
   return lines;
 }
 
-function makeSpreadTexture(page: ScrapbookPage, side: 'left' | 'right'): THREE.Texture {
+function makeSpreadTexture(page: ScrapbookPage, side: 'left' | 'right', flatten = false): THREE.Texture {
   const background = side === 'left' ? '#F1EFE5' : '#E8E3CF';
   return makeCanvasTexture(1200, 1420, background, (context, width, height) => {
+    if (side === 'left' && hasEducationArtwork(page) && paintEducationArtwork(context, flatten)) return;
+    if (side === 'right' && hasHonorsArtwork(page) && paintHonorsArtwork(context, flatten)) return;
     if (page.education) {
       paintEducationPage(context, page, side);
       return;
@@ -359,12 +363,21 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   leftPage.position.x = -2.1;
   leftPage.userData.pageId = pages[0]!.id;
   leftPivot.add(leftPage); parts.set(leftPage.name, leftPage); targets.push(leftPage);
+  const educationLayers = createEducationStickerLayers();
+  leftPage.add(educationLayers.group);
+  parts.set(educationLayers.group.name, educationLayers.group);
+  educationLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
+  let hoveredArtworkTarget: THREE.Object3D | null = null;
 
   const rightPage = createRoundedPage('active-right-page', 4.25, 5.18, makeSpreadTexture(pages[0]!, 'right'), '#DCD7C9');
   rightPage.position.x = 2.1;
   rightPage.userData.pageId = pages[0]!.id;
   rightPage.userData.action = 'next-project';
   rightPivot.add(rightPage); parts.set(rightPage.name, rightPage); targets.push(rightPage);
+  const honorsLayers = createHonorsStickerLayers();
+  rightPage.add(honorsLayers.group);
+  parts.set(honorsLayers.group.name, honorsLayers.group);
+  honorsLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
 
   const turningPivot = new THREE.Group();
   turningPivot.name = 'turning-page-pivot';
@@ -455,6 +468,11 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
 
   const applyPage = (index: number): void => {
     const page = pages[index]!;
+    hoveredArtworkTarget = null;
+    educationLayers.reset();
+    honorsLayers.reset();
+    educationLayers.group.visible = hasEducationArtwork(page);
+    honorsLayers.group.visible = hasHonorsArtwork(page);
     leftCollage.visible = !page.education;
     rightCollage.visible = !page.education;
     root.userData.projectIndex = index;
@@ -489,6 +507,7 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   let hovered = false;
   const handle = createHandle(root, parts, targets, {
     setHovered: (value) => { hovered = value; },
+    setHoveredTarget: (target) => { hoveredArtworkTarget = target; },
     open: () => timelines.run((timeline) => {
       root.userData.open = true;
       root.userData.opening = true;
@@ -523,19 +542,26 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
       const currentPage = pages[currentIndex]!;
       const nextPage = pages[nextIndex]!;
       root.userData.turning = true;
+      hoveredArtworkTarget = null;
+      educationLayers.reset();
+      honorsLayers.reset();
+      educationLayers.group.visible = false;
+      honorsLayers.group.visible = false;
+      // While turning, print a complete flattened left sheet; restore live layers on landing.
+      updatePageTexture(leftPage, makeSpreadTexture(forward ? currentPage : nextPage, 'left', true));
       turningPivot.rotation.y = forward ? -restingOpenAngle : restingOpenAngle;
       turningPage.rotation.set(0, 0, 0);
       turningPage.position.x = forward ? 2.1 : -2.1;
       updateTurningTextures(
         turningPage,
-        makeSpreadTexture(currentPage, forward ? 'right' : 'left'),
-        makeSpreadTexture(nextPage, forward ? 'left' : 'right'),
+        makeSpreadTexture(currentPage, forward ? 'right' : 'left', true),
+        makeSpreadTexture(nextPage, forward ? 'left' : 'right', true),
       );
       if (forward) {
         updatePageTexture(rightPage, makeSpreadTexture(nextPage, 'right'));
         rightPage.userData.pageId = nextPage.id;
       } else {
-        updatePageTexture(leftPage, makeSpreadTexture(nextPage, 'left'));
+        updatePageTexture(leftPage, makeSpreadTexture(nextPage, 'left', true));
         leftPage.userData.pageId = nextPage.id;
       }
       turningPage.visible = true;
@@ -558,6 +584,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   }, (delta) => {
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
     const lift = hovered && !root.userData.turning && root.userData.reducedMotion !== true ? 1 : 0;
+    educationLayers.update(hoveredArtworkTarget, Boolean(lift) && educationLayers.group.visible, delta);
+    honorsLayers.update(hoveredArtworkTarget, Boolean(lift) && honorsLayers.group.visible, delta);
     hoverRig.rotation.y = damp(hoverRig.rotation.y, pointer.x * 0.14 * lift, 7, delta);
     hoverRig.rotation.x = damp(hoverRig.rotation.x, -pointer.y * 0.07 * lift, 7, delta);
     hoverRig.rotation.z = damp(hoverRig.rotation.z, pointer.x * 0.012 * lift, 7, delta);

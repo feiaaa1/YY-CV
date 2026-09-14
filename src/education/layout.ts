@@ -61,12 +61,12 @@ export function paginateEducationBlocks(sections: EducationSection[], measure: T
 
 export function createEducationPages(experiences: EducationExperience[], measure: TextMeasure = browserMeasure()): ScrapbookPage[] {
   return experiences.flatMap((experience, index) => paginateEducationBlocks(experience.sections, measure).map((lines, continuation) => ({
-    id: `${experience.id}-${continuation + 1}`,
-    title: { zh: experience.school, en: 'Learning Journey' },
-    subtitle: { zh: `${experience.period} · ${experience.major}`, en: experience.period },
-    kicker: 'EDUCATION / 学习经历',
-    palette: (index === 0 ? ['#F5F2E9', '#BCD6BB', '#EDBCBE'] : ['#F5F2E9', '#BDCEE8', '#E8CA88']) as [string, string, string],
-    motif: 'intro' as const,
-    education: { experience, lines, continuation },
-  })));
+      id: `${experience.id}-${continuation + 1}`,
+      title: { zh: experience.school, en: 'Learning Journey' },
+      subtitle: { zh: `${experience.period} · ${experience.major}`, en: experience.period },
+      kicker: 'EDUCATION / 学习经历',
+      palette: (index === 0 ? ['#F5F2E9', '#BCD6BB', '#EDBCBE'] : ['#F5F2E9', '#BDCEE8', '#E8CA88']) as [string, string, string],
+      motif: 'intro' as const,
+      education: { experience, lines, continuation },
+    })));
 }
