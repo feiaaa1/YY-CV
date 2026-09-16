@@ -65,7 +65,7 @@ export type Category = {
 export type PortfolioContent = {
   title: LocalizedText;
   owner: LocalizedText;
-  role: LocalizedText;
   contact: string;
+  contactEmail: string;
   categories: Category[];
 };

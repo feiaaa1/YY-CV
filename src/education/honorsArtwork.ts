@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ScrapbookPage } from '../content/types';
 import { damp } from '../three/runtime';
+import { loadImageAsset } from '../performance/imageAssets';
 
 const directory = '/assets/education/page-2/';
 const artworkSize = { width: 1200, height: 1420 };
@@ -13,17 +14,20 @@ type HonorsSticker = {
 };
 
 export const honorsStickers: HonorsSticker[] = [
-  { id: 'title', label: '成长与积累', file: 'title.png', box: [.06, .098, .46, .096] },
-  { id: 'small-steps', label: 'Small Steps, Big Changes.', file: 'small-steps.png', box: [.67, .055, .285, .14] },
-  { id: 'award-01', label: '第九届“互联网+”创新创业大赛天津赛区铜奖', file: 'award-01.png', box: [.06, .315, .88, .075] },
-  { id: 'award-02', label: '天津市公益广告大赛二等奖', file: 'award-02.png', box: [.06, .425, .88, .075] },
-  { id: 'award-03', label: '“讲好文物历史故事”视频大赛一等奖', file: 'award-03.png', box: [.06, .535, .88, .075] },
-  { id: 'award-04', label: '天津市“中广视讯杯”视频大赛三等奖', file: 'award-04.png', box: [.06, .645, .88, .075] },
-  { id: 'award-05', label: '天津市思想政治理论公开课大赛一等奖', file: 'award-05.png', box: [.06, .755, .88, .075] },
+  { id: 'title', label: '成长与积累', file: 'title.webp', box: [.06, .098, .46, .096] },
+  { id: 'small-steps', label: 'Small Steps, Big Changes.', file: 'small-steps.webp', box: [.67, .055, .285, .14] },
+  {
+    id: 'awards',
+    label: '第九届“互联网+”创新创业大赛天津赛区铜奖；天津市公益广告大赛二等奖；“讲好文物历史故事”视频大赛一等奖；天津市“中广视讯杯”视频大赛三等奖；天津市思想政治理论公开课大赛一等奖',
+    file: 'awards-transparent.png',
+    box: [.06, .35, .88, .44],
+  },
 ];
 
 const images = new Map<string, HTMLImageElement>();
 let loading: Promise<void> | undefined;
+
+export const honorsAssetUrls = honorsStickers.map((item) => `${directory}${item.file}`);
 
 export function hasHonorsArtwork(page: ScrapbookPage): boolean {
   return page.education?.experience.id === 'renai' && page.education.continuation === 0;
@@ -31,12 +35,9 @@ export function hasHonorsArtwork(page: ScrapbookPage): boolean {
 
 export function loadHonorsArtwork(): Promise<void> {
   if (typeof document === 'undefined') return Promise.resolve();
-  loading ??= Promise.all(honorsStickers.map((sticker) => new Promise<void>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => { images.set(sticker.file, image); resolve(); };
-    image.onerror = () => reject(new Error(`Unable to load honors artwork: ${sticker.file}`));
-    image.src = `${directory}${sticker.file}`;
-  }))).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
+  loading ??= Promise.all(honorsStickers.map(async (sticker) => {
+    images.set(sticker.file, await loadImageAsset(`${directory}${sticker.file}`, 'high'));
+  })).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
   return loading;
 }
 

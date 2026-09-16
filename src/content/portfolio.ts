@@ -124,9 +124,9 @@ const categories: Category[] = [
 ];
 
 export const portfolioContent: PortfolioContent = {
-  title: { zh: '电商运营作品集', en: 'E-COMMERCE PORTFOLIO' },
+  title: { zh: '作品集', en: 'PORTFOLIO' },
   owner: aboutProfile.name,
-  role: { zh: '电商运营', en: 'E-COMMERCE OPERATIONS' },
   contact: aboutProfile.contact,
+  contactEmail: aboutProfile.contactEmail,
   categories,
 };

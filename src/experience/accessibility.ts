@@ -30,7 +30,7 @@ function describeCover(content: PortfolioContent): ScreenDescriptor {
   return {
     heading: `${content.title.zh} / ${content.title.en}`,
     status: '封面：点击文件夹进入作品分类。',
-    details: [`${content.owner.zh}，${content.role.zh}`],
+    details: [`${content.owner.zh} / ${content.owner.en}`],
     controls: [{ label: '进入作品目录', action: { type: 'ENTER_DIRECTORY' } }],
   };
 }

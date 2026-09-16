@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Category } from '../content/types';
-import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh, updateTextPanel } from '../three/geometry';
+import { makeTag, makeTextPanel, panelTextureOptions, roundedRectShape, makeExtrudedMesh, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
 import { createTimelineController } from '../animation/timelines';
 import { createTextTexture, type TextTextureOptions } from '../three/textures';
@@ -9,6 +9,9 @@ type BookPageSide = 'left' | 'right';
 
 function projectPageOptions(category: Category, index: number, side: BookPageSide): TextTextureOptions {
   const project = category.projects[index]!;
+  // English summaries need four lines once the page prints at its true
+  // proportions instead of the old vertically stretched canvas.
+  const layout: Partial<TextTextureOptions> = { subtitleY: 0.58, subtitleLines: 4 };
   return side === 'left'
     ? {
         title: project.title.zh,
@@ -17,6 +20,7 @@ function projectPageOptions(category: Category, index: number, side: BookPageSid
         background: '#FFFDF7',
         foreground: '#20222A',
         accent: project.accent,
+        ...layout,
       }
     : {
         title: project.title.en,
@@ -25,6 +29,7 @@ function projectPageOptions(category: Category, index: number, side: BookPageSid
         background: '#FFFDF7',
         foreground: '#20222A',
         accent: project.accent,
+        ...layout,
       };
 }
 
@@ -42,9 +47,10 @@ function createTurningLeaf(frontOptions: TextTextureOptions, backOptions: TextTe
   leaf.add(body);
 
   const faceGeometry = new THREE.PlaneGeometry(3.47, 4.05);
+  const faceOptions = (options: TextTextureOptions): TextTextureOptions => panelTextureOptions(3.47, 4.05, options);
   const front = new THREE.Mesh(
     faceGeometry,
-    new THREE.MeshBasicMaterial({ map: createTextTexture(frontOptions), toneMapped: false }),
+    new THREE.MeshBasicMaterial({ map: createTextTexture(faceOptions(frontOptions)), toneMapped: false }),
   );
   front.name = 'turning-page-front';
   front.position.z = 0.039;
@@ -53,7 +59,7 @@ function createTurningLeaf(frontOptions: TextTextureOptions, backOptions: TextTe
 
   const back = new THREE.Mesh(
     faceGeometry.clone(),
-    new THREE.MeshBasicMaterial({ map: createTextTexture(backOptions), toneMapped: false }),
+    new THREE.MeshBasicMaterial({ map: createTextTexture(faceOptions(backOptions)), toneMapped: false }),
   );
   back.name = 'turning-page-back';
   back.position.z = -0.039;
@@ -76,8 +82,8 @@ function updateTurningLeaf(
   const back = leaf.userData.backPrint as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   front.material.map?.dispose();
   back.material.map?.dispose();
-  front.material.map = createTextTexture(frontOptions);
-  back.material.map = createTextTexture(backOptions);
+  front.material.map = createTextTexture(panelTextureOptions(3.47, 4.05, frontOptions));
+  back.material.map = createTextTexture(panelTextureOptions(3.47, 4.05, backOptions));
   front.material.needsUpdate = true;
   back.material.needsUpdate = true;
   leaf.userData.frontContent = frontOptions;

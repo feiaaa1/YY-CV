@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createTimelineController } from '../animation/timelines';
-import { makeExtrudedMesh, makeTextPanel, roundedRectShape } from '../three/geometry';
+import { loadImageAsset } from '../performance/imageAssets';
+import { makeExtrudedMesh, makeTextPanel, panelTextureOptions, roundedRectShape } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
 import { createTextTexture } from '../three/textures';
 
@@ -13,6 +14,22 @@ const FRONT_REST_TILT = 0.08;
 const PAPER_REST_TILT = 0.08;
 const BASE_ASSEMBLY_YAW = 0.18;
 const FOLDER_REST_SCALE = 0.85;
+
+// The homepage wordmark is supplied artwork instead of typeset text, so the
+// cover loads a pre-trimmed transparent sticker and keeps its pixel ratio.
+export const coverTitleStickerUrl = '/assets/cover/portfolio-title-sticker.webp';
+const TITLE_STICKER_ASPECT = 1681 / 656;
+// "作品集" wordmark: slightly smaller than the first pass so the folder stays
+// the hero of the cover while the title still clears the folder tab underneath.
+const TITLE_STICKER_WIDTH = 3.9;
+const TITLE_STICKER_HEIGHT = TITLE_STICKER_WIDTH / TITLE_STICKER_ASPECT;
+const TITLE_STICKER_REST_Y = 3.22;
+
+/**
+ * Resting x of the "联系我" column. It sits clear of the leaning flap; the
+ * layout pass pulls it back in when the viewport is too narrow to hold it.
+ */
+export const COVER_RIGHT_CAPTION_X = 5.3;
 
 function rearFolderShape(): THREE.Shape {
   const shape = new THREE.Shape();
@@ -72,6 +89,28 @@ function anchorMeshBottom(mesh: THREE.Mesh): void {
   mesh.position.y = -(mesh.geometry.boundingBox?.min.y ?? 0);
 }
 
+function makeTitleSticker(): THREE.Mesh {
+  // The texture starts empty so the plane stays invisible until the preloaded
+  // sticker resolves, instead of flashing a blank rectangle over the scene.
+  const texture = new THREE.Texture();
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.anisotropy = 8;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(TITLE_STICKER_WIDTH, TITLE_STICKER_HEIGHT),
+    new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  return mesh;
+}
+
 export function createCoverModel(reducedMotion = false): SculptModelHandle {
   const root = new THREE.Group();
   root.name = 'reference-cover';
@@ -87,35 +126,20 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   root.add(folderAssembly);
   parts.set(folderAssembly.name, folderAssembly);
 
-  const title = makeTextPanel(10.15, 1.6, 0.035, {
-    title: '电商运营',
-    background: BLUE,
-    foreground: PALE_YELLOW,
-    align: 'center',
-    width: 1900,
-    height: 330,
-    titleScale: 0.66,
-    transparentBackground: true,
-  });
+  const title = makeTitleSticker();
   title.name = 'portfolio-title';
-  title.position.set(0, 3.05, -0.12);
+  title.position.set(0, TITLE_STICKER_REST_Y, -0.12);
   root.add(title);
   parts.set(title.name, title);
 
-  const yearScript = makeTextPanel(8.5, 0.72, 0.03, {
-    title: '2026                         E-Commerce Portfolio',
-    background: BLUE,
-    foreground: CREAM,
-    align: 'center',
-    width: 1800,
-    height: 250,
-    titleScale: 0.22,
-    transparentBackground: true,
-  });
-  yearScript.name = 'year-script';
-  yearScript.position.set(0.15, 2.48, 0.02);
-  root.add(yearScript);
-  parts.set(yearScript.name, yearScript);
+  const titleMaterial = title.material as THREE.MeshBasicMaterial;
+  void loadImageAsset(coverTitleStickerUrl, 'high')
+    .then((image) => {
+      if (root.userData.disposed === true) return;
+      titleMaterial.map!.image = image;
+      titleMaterial.map!.needsUpdate = true;
+    })
+    .catch(() => undefined);
 
   const folderBack = makeExtrudedMesh(rearFolderShape(), '#E99908', 0.14, 0.045);
   folderBack.name = 'folder-back';
@@ -128,16 +152,17 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   // The tab is part of the rear shell silhouette, not a floating second mesh.
   parts.set('folder-tab', folderBack);
 
-  const tabLabelTexture = createTextTexture({
-    title: 'E-Commerce',
+  const tabLabelTexture = createTextTexture(panelTextureOptions(1.7, 0.34, {
+    title: '',
     background: '#E99908',
     foreground: '#9C7621',
+    accent: 'rgba(0,0,0,0)',
     align: 'center',
     width: 700,
     height: 180,
     titleScale: 0.12,
     transparentBackground: true,
-  });
+  }));
   const tabLabel = new THREE.Mesh(
     new THREE.PlaneGeometry(1.7, 0.34),
     new THREE.MeshBasicMaterial({
@@ -190,15 +215,20 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
 
   const greeting = makeTextPanel(5.1, 1.55, 0.012, {
     title: '韩婧仪',
-    subtitle: 'GINNY · 电商运营\nE-COMMERCE OPERATIONS',
+    subtitle: 'GINNY',
     background: YELLOW,
     foreground: '#E4AB25',
     accent: 'rgba(0,0,0,0)',
     align: 'center',
     width: 1250,
     height: 500,
-    titleScale: 0.28,
-    subtitleScale: 0.07,
+    // The folder's front flap is the cover's focal point, so the name and the
+    // two caption rows under it are printed a size larger than the shared
+    // panel defaults; the line positions keep the rows apart at that size.
+    titleScale: 0.44,
+    subtitleScale: 0.115,
+    titleY: 0.32,
+    subtitleY: 0.68,
     transparentBackground: true,
   });
   greeting.name = 'greeting-carrier';
@@ -227,19 +257,24 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
   flapHinge.add(flapLabel);
   parts.set(flapLabel.name, flapLabel);
 
-  const leftInfo = makeTextPanel(2.35, 1.08, 0.03, {
-    title: '求职者 韩婧仪', subtitle: 'E-COMMERCE OPERATIONS\n● 电商运营', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 430, titleScale: 0.12, subtitleScale: 0.055, transparentBackground: true,
+  // The two side captions carry the name and the contact details, so they are
+  // painted at a size that survives a phone screen instead of the previous
+  // hairline type.
+  const leftInfo = makeTextPanel(2.6, 1.6, 0.03, {
+    title: '求职者 韩婧仪', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 430, titleScale: 0.2, titleY: 0.6, transparentBackground: true,
   });
   leftInfo.name = 'left-info';
-  leftInfo.position.set(-4.45, -1.48, 0.02);
+  leftInfo.position.set(-4.65, -1.55, 0.02);
   root.add(leftInfo);
   parts.set(leftInfo.name, leftInfo);
 
-  const rightInfo = makeTextPanel(2.3, 1.75, 0.03, {
-    title: '联系我', subtitle: '17335581033\n2938076274@qq.com\nSQL · Excel · SPSS · AI', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 650, titleScale: 0.095, subtitleScale: 0.042, transparentBackground: true,
+  const rightInfo = makeTextPanel(2.8, 2.1, 0.03, {
+    title: '联系我', subtitle: '17335581033\n2938076274@qq.com\nSQL · Excel · SPSS · AI', background: BLUE, foreground: CREAM, accent: PALE_YELLOW, width: 850, height: 650, titleScale: 0.21, subtitleScale: 0.095, subtitleLines: 4, titleY: 0.2, subtitleY: 0.46, transparentBackground: true,
   });
   rightInfo.name = 'right-info';
-  rightInfo.position.set(4.42, -0.78, 0.02);
+  // Cleared to the right of the leaning flap so "联系我" reads as its own
+  // column instead of touching the folder edge.
+  rightInfo.position.set(COVER_RIGHT_CAPTION_X, -0.9, 0.02);
   root.add(rightInfo);
   parts.set(rightInfo.name, rightInfo);
 
@@ -251,7 +286,7 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
 
   root.userData.hovered = false;
   const setOpacity = (value: number) => {
-    for (const object of [title, yearScript, leftInfo, rightInfo]) {
+    for (const object of [title, leftInfo, rightInfo]) {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
         material.transparent = true;

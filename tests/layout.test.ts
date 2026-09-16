@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest';
-import { getCoverScale, getDetailScale, getDirectoryLayout, getRenderProfile } from '../src/experience/layout';
+import {
+  getCoverScale,
+  getDetailScale,
+  getDirectoryLayout,
+  getJourneyPopupFit,
+  getJourneyPopupScale,
+  getRenderProfile,
+  JOURNEY_DETAIL_TEXTURE,
+} from '../src/experience/layout';
 
 describe('responsive scene layout', () => {
   test('uses a three-plus-two composition on desktop', () => {
@@ -17,22 +25,38 @@ describe('responsive scene layout', () => {
   });
 
   test('fills desktop and mobile viewports with the complete cover composition', () => {
-    expect(getCoverScale(390, 844)).toBe(0.62);
+    expect(getCoverScale(390, 844)).toBe(0.72);
     expect(getCoverScale(640, 640)).toBe(0.85);
     expect(getCoverScale(1440, 900)).toBe(0.9);
   });
 
   test('returns only render settings consumed by the runtime', () => {
-    expect(getRenderProfile(390, 844, 3)).toEqual({
-      isMobile: true,
-      pixelRatio: 1,
-      shadowMapSize: 512,
-    });
-    expect(getRenderProfile(1440, 900, 3)).toEqual({
-      isMobile: false,
-      pixelRatio: 1.25,
-      shadowMapSize: 1024,
-    });
+    const phone = getRenderProfile(390, 844, 3);
+    expect(phone.isMobile).toBe(true);
+    // A 3x phone screen needs a 3x framebuffer, otherwise the browser upscales
+    // the whole canvas and the artwork goes soft.
+    expect(phone.pixelRatio).toBe(3);
+    expect(phone.shadowMapSize).toBe(512);
+
+    const desktop = getRenderProfile(1440, 900, 3);
+    expect(desktop.isMobile).toBe(false);
+    expect(desktop.pixelRatio).toBeGreaterThan(2);
+    expect(desktop.pixelRatio).toBeLessThanOrEqual(3);
+    expect(desktop.shadowMapSize).toBe(1024);
+  });
+
+  test('renders every screen at display density inside a framebuffer budget', () => {
+    // WebGL text is upscaled by the browser below one device pixel per point,
+    // which is what turned the folder captions soft on phones and HiDPI panels.
+    for (const [width, height] of [[1440, 900], [390, 844], [1280, 800]] as const) {
+      expect(getRenderProfile(width, height, 2).pixelRatio).toBe(2);
+    }
+    expect(getRenderProfile(390, 844, 3, { detailed: true }).pixelRatio).toBe(3);
+    expect(getRenderProfile(1440, 900, 3, { detailed: true }).pixelRatio).toBeGreaterThan(2);
+
+    const budgeted = getRenderProfile(2560, 1440, 2, { detailed: true });
+    expect(budgeted.pixelRatio).toBeLessThan(2);
+    expect(2560 * 1440 * budgeted.pixelRatio ** 2).toBeLessThanOrEqual(8_300_000);
   });
 
   test('fits detail models inside narrow mobile viewports', () => {
@@ -43,5 +67,47 @@ describe('responsive scene layout', () => {
   test('keeps the square internship board larger than wide detail objects on mobile', () => {
     expect(getDetailScale(390, 844, 'journey')).toBe(0.76);
     expect(getDetailScale(390, 844, 'journey')).toBeGreaterThan(getDetailScale(390, 844));
+  });
+
+  test('shows internship popups at their native bitmap size on every viewport', () => {
+    const viewports = [
+      [1440, 900, 1],
+      [2560, 1600, 1],
+      [1280, 720, 1],
+      [3840, 2160, 1],
+      [1920, 1080, 2],
+      [5120, 2880, 2],
+      [3008, 1692, 2],
+      [390, 844, 3],
+    ] as const;
+
+    for (const [width, height, pixelRatio] of viewports) {
+      const fit = getJourneyPopupFit(width, height, 1, { pixelRatio });
+      // Shrinking it loses detail and stretching it invents detail; both make
+      // the sheet unreadable, so the popup always renders one bitmap pixel per
+      // device pixel.
+      expect(fit.devicePixelHeight).toBeCloseTo(JOURNEY_DETAIL_TEXTURE.height, 6);
+      expect(fit.viewportHeightRatio * height * pixelRatio)
+        .toBeCloseTo(JOURNEY_DETAIL_TEXTURE.height, 6);
+    }
+    expect(getJourneyPopupScale(2560, 1600, 1, { pixelRatio: 1 })).toBeCloseTo(1.222, 3);
+  });
+
+  test('reports popup overflow so the detail screen can pan instead of shrinking', () => {
+    const desktop = getJourneyPopupFit(2560, 1600, 1, { pixelRatio: 1 });
+    expect(desktop.viewportHeightRatio).toBeCloseTo(1448 / 1600, 6);
+    expect(desktop.overflowY).toBeCloseTo(0, 6);
+    expect(desktop.overflowX).toBeCloseTo(0, 6);
+
+    const shortWindow = getJourneyPopupFit(1280, 720, 1, { pixelRatio: 1 });
+    expect(shortWindow.viewportHeightRatio).toBeGreaterThan(1);
+    expect(shortWindow.overflowY).toBeGreaterThan(0);
+    expect(shortWindow.overflowX).toBeCloseTo(0, 6);
+    expect(shortWindow.visibleHeight).toBeGreaterThan(0);
+
+    const phone = getJourneyPopupFit(390, 844, 0.76, { pixelRatio: 3 });
+    expect(phone.viewportHeightRatio).toBeLessThan(1);
+    expect(phone.overflowY).toBeCloseTo(0, 6);
+    expect(phone.overflowX).toBeCloseTo(0, 6);
   });
 });

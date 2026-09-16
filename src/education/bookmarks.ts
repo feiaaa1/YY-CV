@@ -1,24 +1,24 @@
 import * as THREE from 'three';
 import { damp } from '../three/runtime';
+import { loadImageAsset } from '../performance/imageAssets';
 
 const directory = '/assets/education/bookmarks/';
 
 const bookmarkSpecs = [
-  { id: 'master', label: '硕士', file: 'master.png', projectIndex: 0, y: .72 },
-  { id: 'bachelor', label: '本科', file: 'bachelor.png', projectIndex: 1, y: -.14 },
+  { id: 'master', label: '硕士', file: 'master.webp', projectIndex: 0, y: .72 },
+  { id: 'bachelor', label: '本科', file: 'bachelor.webp', projectIndex: 1, y: -.14 },
 ] as const;
 
 const images = new Map<string, HTMLImageElement>();
 let loading: Promise<void> | undefined;
 
+export const educationBookmarkAssetUrls = bookmarkSpecs.map((item) => `${directory}${item.file}`);
+
 export function loadEducationBookmarks(): Promise<void> {
   if (typeof document === 'undefined') return Promise.resolve();
-  loading ??= Promise.all(bookmarkSpecs.map((spec) => new Promise<void>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => { images.set(spec.file, image); resolve(); };
-    image.onerror = () => reject(new Error(`Unable to load education bookmark: ${spec.file}`));
-    image.src = `${directory}${spec.file}`;
-  }))).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
+  loading ??= Promise.all(bookmarkSpecs.map(async (spec) => {
+    images.set(spec.file, await loadImageAsset(`${directory}${spec.file}`, 'high'));
+  })).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
   return loading;
 }
 

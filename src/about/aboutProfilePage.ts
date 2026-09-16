@@ -1,4 +1,5 @@
 import { gsap } from 'gsap';
+import { preloadImageAssets, type ImageLoadProgress } from '../performance/imageAssets';
 
 export const ABOUT_PROFILE_SECTIONS = [
   { id: 'portrait', label: '个人照片' },
@@ -11,29 +12,47 @@ export const ABOUT_PROFILE_SECTIONS = [
 const assetRoot = '/assets/profile2';
 
 const skills = [
-  ['PS', 'skill-ps.png'],
-  ['PR', 'skill-pr.png'],
-  ['CapCut', 'skill-capcut.png'],
-  ['SQL', 'skill-sql.png'],
-  ['Office', 'skill-office.png'],
-  ['SPSS', 'skill-spss.png'],
-  ['Figma', 'skill-figma.png'],
-  ['Codex', 'skill-codex.png'],
-  ['秀米', 'skill-xiumi.png'],
+  ['PS', 'skill-ps.webp'],
+  ['PR', 'skill-pr.webp'],
+  ['CapCut', 'skill-capcut.webp'],
+  ['SQL', 'skill-sql.webp'],
+  ['Office', 'skill-office.webp'],
+  ['SPSS', 'skill-spss.webp'],
+  ['Figma', 'skill-figma.webp'],
+  ['Codex', 'skill-codex.webp'],
+  ['秀米', 'skill-xiumi.webp'],
 ] as const;
 
 const personalTags = [
-  ['胡辣汤忠实粉丝', 'tag-hula-soup.png'],
-  ['面条大王', 'tag-noodle-master.png'],
-  ['ESTJ', 'tag-estj.png'],
-  ['超级大E人', 'tag-super-e.png'],
-  ['调解大师', 'tag-mediator.png'],
-  ['王者最强王者20星', 'tag-king-20.png'],
-  ['乒乓球达人', 'tag-pingpong.png'],
+  ['胡辣汤忠实粉丝', 'tag-hula-soup.webp'],
+  ['面条大王', 'tag-noodle-master.webp'],
+  ['ESTJ', 'tag-estj.webp'],
+  ['超级大E人', 'tag-super-e.webp'],
+  ['调解大师', 'tag-mediator.webp'],
+  ['王者最强王者20星', 'tag-king-20.webp'],
+  ['乒乓球达人', 'tag-pingpong.webp'],
 ] as const;
 
+export const aboutProfileAssetUrls = [
+  `${assetRoot}/01-top-left/photo-card-full.webp`,
+  `${assetRoot}/02-top-right/about-skills-bg.webp`,
+  `${assetRoot}/03-bottom-left/from-card-bg.webp`,
+  `${assetRoot}/03-bottom-left/henan-badge-new.webp`,
+  `${assetRoot}/03-bottom-left/bsu-badge-new.webp`,
+  `${assetRoot}/04-bottom-center/tags-card-bg.webp`,
+  `${assetRoot}/05-bottom-right/contact-card-full.webp`,
+  ...skills.map(([, filename]) => `${assetRoot}/02-top-right/${filename}`),
+  ...personalTags.map(([, filename]) => `${assetRoot}/04-bottom-center/${filename}`),
+] as const;
+
+export function preloadAboutProfileAssets(
+  onProgress?: (progress: ImageLoadProgress) => void,
+): Promise<string[]> {
+  return preloadImageAssets(aboutProfileAssetUrls, onProgress, 'high');
+}
+
 const image = (src: string, alt: string, className: string, eager = false): string => (
-  `<img src="${src}" alt="${alt}" class="${className}" decoding="async" loading="${eager ? 'eager' : 'lazy'}">`
+  `<img src="${src}" alt="${alt}" class="${className}" decoding="async" loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'low'}">`
 );
 
 export function getAboutEntranceMotion(reducedMotion: boolean): { duration: number; stagger: number; y: number } {
@@ -66,28 +85,28 @@ export function buildAboutProfileMarkup(): string {
         <div class="about-profile__layout">
           <div class="about-profile__left-column">
             <section class="about-profile__section about-profile__portrait" data-about-section="portrait" aria-label="个人照片">
-              ${image(`${assetRoot}/01-top-left/photo-card-full.png`, '韩婧仪 Ginny 个人照片', 'about-profile__artwork', true)}
+              ${image(`${assetRoot}/01-top-left/photo-card-full.webp`, '韩婧仪 Ginny 个人照片', 'about-profile__artwork', true)}
             </section>
             <section class="about-profile__section about-profile__origin" data-about-section="origin" aria-label="来自哪里">
-              ${image(`${assetRoot}/03-bottom-left/from-card-bg.png`, '来自哪里', 'about-profile__artwork')}
+              ${image(`${assetRoot}/03-bottom-left/from-card-bg.webp`, '来自哪里', 'about-profile__artwork')}
               <div class="about-profile__origin-badges" data-about-items>
-                ${image(`${assetRoot}/03-bottom-left/henan-badge-new.png`, '河南 老家', 'about-profile__origin-badge')}
-                ${image(`${assetRoot}/03-bottom-left/bsu-badge-new.png`, '北京体育大学', 'about-profile__origin-badge')}
+                ${image(`${assetRoot}/03-bottom-left/henan-badge-new.webp`, '河南 老家', 'about-profile__origin-badge')}
+                ${image(`${assetRoot}/03-bottom-left/bsu-badge-new.webp`, '北京体育大学', 'about-profile__origin-badge')}
               </div>
             </section>
           </div>
           <div class="about-profile__right-column">
             <section class="about-profile__section about-profile__skills" data-about-section="about-skills" aria-label="关于我与技能">
-              ${image(`${assetRoot}/02-top-right/about-skills-bg.png`, 'About me 与技能', 'about-profile__artwork', true)}
+              ${image(`${assetRoot}/02-top-right/about-skills-bg.webp`, 'About me 与技能', 'about-profile__artwork', true)}
               <div class="about-profile__skill-grid" data-about-items>${skillMarkup}</div>
             </section>
             <div class="about-profile__bottom-row">
               <section class="about-profile__section about-profile__tags" data-about-section="personal-tags" aria-label="个人标签">
-                ${image(`${assetRoot}/04-bottom-center/tags-card-bg.png`, '个人标签', 'about-profile__artwork')}
+                ${image(`${assetRoot}/04-bottom-center/tags-card-bg.webp`, '个人标签', 'about-profile__artwork')}
                 <div class="about-profile__tag-grid" data-about-items>${tagRows}</div>
               </section>
               <section class="about-profile__section about-profile__contact" data-about-section="contact" aria-label="联系信息">
-                ${image(`${assetRoot}/05-bottom-right/contact-card-full.png`, '联系信息', 'about-profile__artwork')}
+                ${image(`${assetRoot}/05-bottom-right/contact-card-full.webp`, '联系信息', 'about-profile__artwork')}
               </section>
             </div>
           </div>

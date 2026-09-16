@@ -3,6 +3,16 @@ import { createScrapbookModel } from '../src/models/scrapbook';
 import { portfolioContent } from '../src/content/portfolio';
 import * as THREE from 'three';
 import { PortfolioExperience } from '../src/experience/PortfolioExperience';
+import { honorsAssetUrls, honorsStickers } from '../src/education/honorsArtwork';
+
+test('Renai honors page keeps the current heading artwork and uses the incoming awards image below it', () => {
+  expect(honorsStickers.map(({ id, file, box }) => ({ id, file, box }))).toEqual([
+    { id: 'title', file: 'title.webp', box: [.06, .098, .46, .096] },
+    { id: 'small-steps', file: 'small-steps.webp', box: [.67, .055, .285, .14] },
+    { id: 'awards', file: 'awards-transparent.png', box: [.06, .35, .88, .44] },
+  ]);
+  expect(honorsAssetUrls).toContain('/assets/education/page-2/awards-transparent.png');
+});
 
 test('hidden BSU stickers do not intercept clicks on the bachelor spread', async () => {
   const model = createScrapbookModel(portfolioContent.categories[1]!, true);
@@ -56,14 +66,17 @@ test('bachelor page has four independent stickers that lift, restore, and disapp
   model.dispose();
 });
 
-test('bachelor spread’s right page exposes the supplied title, note, and five award stickers', async () => {
+test('bachelor spread’s right page exposes the supplied title, note, and combined awards artwork', async () => {
   const model = createScrapbookModel(portfolioContent.categories[1]!, true);
   await model.actions.setProject(1);
-  const stickers = ['title', 'small-steps', 'award-01', 'award-02', 'award-03', 'award-04', 'award-05']
+  const stickers = ['title', 'small-steps', 'awards']
     .map((id) => model.parts.get(`honors-sticker-${id}`)!);
   expect(stickers.every(Boolean)).toBe(true);
   expect(stickers.every((sticker) => model.interactiveTargets.includes(sticker))).toBe(true);
   expect(stickers.every((sticker) => sticker.userData.action === 'hover-honors-sticker')).toBe(true);
+  expect(['award-01', 'award-02', 'award-03', 'award-04', 'award-05']
+    .every((id) => !model.parts.has(`honors-sticker-${id}`))).toBe(true);
+  expect([...model.parts.keys()].some((key) => key.startsWith('honors-sticker-award-'))).toBe(false);
   expect(model.parts.get('honors-stickers')!.visible).toBe(true);
   model.dispose();
 });

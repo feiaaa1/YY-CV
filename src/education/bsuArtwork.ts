@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ScrapbookPage } from '../content/types';
 import { damp } from '../three/runtime';
+import { loadImageAsset } from '../performance/imageAssets';
 
 const directory = '/assets/education/bsu-left/';
 const artworkSize = { width: 1200, height: 1420 };
@@ -14,27 +15,27 @@ type BsuSticker = {
   box: [number, number, number, number];
 };
 
-export const bsuBackground = `${directory}background.png`;
+export const bsuBackground = `${directory}background.webp`;
 
 export const bsuStickers: BsuSticker[] = [
   {
-    id: 'title', label: '北京体育大学（211）', file: 'title.png',
+    id: 'title', label: '北京体育大学（211）', file: 'title.webp',
     crop: [35, 65, 1990, 620], source: [2073, 759], box: [.055, .078, .84, .205],
   },
   {
-    id: 'media-badge', label: 'Sports Media Better People', file: 'media-badge.png',
+    id: 'media-badge', label: 'Sports Media Better People', file: 'media-badge.webp',
     crop: [220, 10, 1090, 995], source: [1536, 1024], box: [.77, .235, .20, .125],
   },
   {
-    id: 'megaphone', label: '传播扩音器', file: 'megaphone.png',
+    id: 'megaphone', label: '传播扩音器', file: 'megaphone.webp',
     crop: [185, 45, 1190, 945], source: [1536, 1024], box: [.02, .405, .25, .15],
   },
   {
-    id: 'stadium', label: '北京体育大学田径场', file: 'stadium.png',
+    id: 'stadium', label: '北京体育大学田径场', file: 'stadium.webp',
     crop: [20, 8, 1325, 1130], source: [1379, 1141], box: [.56, .36, .42, .32],
   },
   {
-    id: 'gpa', label: '绩点 3.84 / 4，专业排名 5 / 50', file: 'gpa.png',
+    id: 'gpa', label: '绩点 3.84 / 4，专业排名 5 / 50', file: 'gpa.webp',
     crop: [145, 90, 1810, 575], source: [2157, 729], box: [.04, .70, .94, .255],
   },
 ];
@@ -42,24 +43,26 @@ export const bsuStickers: BsuSticker[] = [
 const images = new Map<string, HTMLImageElement>();
 let loading: Promise<void> | undefined;
 
+export const bsuAssetUrls = [
+  `${directory}background.webp`,
+  ...bsuStickers.map((item) => `${directory}${item.file}`),
+];
+
 export function hasBsuArtwork(page: ScrapbookPage): boolean {
   return page.education?.experience.id === 'bsu' && page.education.continuation === 0;
 }
 
 export function loadBsuArtwork(): Promise<void> {
   if (typeof document === 'undefined') return Promise.resolve();
-  const files = ['background.png', ...bsuStickers.map((sticker) => sticker.file)];
-  loading ??= Promise.all(files.map((file) => new Promise<void>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => { images.set(file, image); resolve(); };
-    image.onerror = () => reject(new Error(`Unable to load BSU education artwork: ${file}`));
-    image.src = `${directory}${file}`;
-  }))).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
+  const files = ['background.webp', ...bsuStickers.map((sticker) => sticker.file)];
+  loading ??= Promise.all(files.map(async (file) => {
+    images.set(file, await loadImageAsset(`${directory}${file}`, 'high'));
+  })).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
   return loading;
 }
 
 export function paintBsuArtwork(ctx: CanvasRenderingContext2D, flatten: boolean): boolean {
-  const background = images.get('background.png');
+  const background = images.get('background.webp');
   if (!background) return false;
   ctx.drawImage(background, 0, 0, artworkSize.width, artworkSize.height);
   if (flatten) for (const sticker of bsuStickers) {

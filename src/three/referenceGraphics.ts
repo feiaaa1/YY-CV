@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { configureTextTexture } from './textures';
 
 export type ReferenceTextLayer = {
   id: string;
@@ -118,8 +119,5 @@ export function createReferenceTexture(graphic: ReferenceGraphic): THREE.Texture
     context.restore();
   }
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  texture.needsUpdate = true;
-  return texture;
+  return configureTextTexture(texture);
 }

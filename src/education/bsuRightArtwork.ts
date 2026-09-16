@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ScrapbookPage } from '../content/types';
 import { damp } from '../three/runtime';
+import { loadImageAsset } from '../performance/imageAssets';
 
 const directory = '/assets/education/bsu-right/';
 const artworkSize = { width: 1200, height: 1420 };
@@ -14,23 +15,23 @@ type BsuRightSticker = {
   box: [number, number, number, number];
 };
 
-export const bsuRightBackground = `${directory}background.png`;
+export const bsuRightBackground = `${directory}background.webp`;
 
 export const bsuRightStickers: BsuRightSticker[] = [
   {
-    id: 'title', label: '学术与实践', file: 'title.png',
+    id: 'title', label: '学术与实践', file: 'title.webp',
     crop: [35, 35, 1940, 680], source: [2025, 776], box: [.067, .10, .565, .127],
   },
   {
-    id: 'knowledge', label: 'Knowledge Moves Further', file: 'knowledge.png',
+    id: 'knowledge', label: 'Knowledge Moves Further', file: 'knowledge.webp',
     crop: [165, 15, 1460, 840], source: [1774, 887], box: [.663, .073, .276, .167],
   },
   {
-    id: 'academic', label: '学术成果', file: 'academic.png',
+    id: 'academic', label: '学术成果', file: 'academic.webp',
     crop: [55, 38, 1840, 705], source: [1954, 805], box: [.031, .259, .945, .344],
   },
   {
-    id: 'practice', label: '实践经历', file: 'practice.png',
+    id: 'practice', label: '实践经历', file: 'practice.webp',
     crop: [105, 50, 1940, 590], source: [2172, 724], box: [.041, .615, .923, .305],
   },
 ];
@@ -38,24 +39,26 @@ export const bsuRightStickers: BsuRightSticker[] = [
 const images = new Map<string, HTMLImageElement>();
 let loading: Promise<void> | undefined;
 
+export const bsuRightAssetUrls = [
+  `${directory}background.webp`,
+  ...bsuRightStickers.map((item) => `${directory}${item.file}`),
+];
+
 export function hasBsuRightArtwork(page: ScrapbookPage): boolean {
   return page.education?.experience.id === 'bsu' && page.education.continuation === 0;
 }
 
 export function loadBsuRightArtwork(): Promise<void> {
   if (typeof document === 'undefined') return Promise.resolve();
-  const files = ['background.png', ...bsuRightStickers.map((sticker) => sticker.file)];
-  loading ??= Promise.all(files.map((file) => new Promise<void>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => { images.set(file, image); resolve(); };
-    image.onerror = () => reject(new Error(`Unable to load BSU right-page artwork: ${file}`));
-    image.src = `${directory}${file}`;
-  }))).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
+  const files = ['background.webp', ...bsuRightStickers.map((sticker) => sticker.file)];
+  loading ??= Promise.all(files.map(async (file) => {
+    images.set(file, await loadImageAsset(`${directory}${file}`, 'high'));
+  })).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
   return loading;
 }
 
 export function paintBsuRightArtwork(ctx: CanvasRenderingContext2D, flatten: boolean): boolean {
-  const background = images.get('background.png');
+  const background = images.get('background.webp');
   if (!background) return false;
   ctx.drawImage(background, 0, 0, artworkSize.width, artworkSize.height);
   if (flatten) for (const sticker of bsuRightStickers) {

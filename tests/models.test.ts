@@ -6,12 +6,13 @@ import { createFolderModel } from '../src/models/folder';
 import { createOpenBookModel } from '../src/models/book';
 import { createTicketStackModel } from '../src/models/ticket';
 import { createThankYouModel } from '../src/models/thanks';
-import { createCoverModel } from '../src/models/cover';
+import { coverTitleStickerUrl, createCoverModel } from '../src/models/cover';
 import { createDirectoryFolderModel } from '../src/models/directoryFolder';
 import { createAboutCvModel } from '../src/models/aboutCv';
 import { createScrapbookModel } from '../src/models/scrapbook';
 import { createJourneyModel } from '../src/models/journey';
 import { createPaperclip } from '../src/three/paperclip';
+import { SHEET_PLATE } from '../src/content/internshipSheetText';
 
 describe('procedural model contracts', () => {
   test('model handles expose live reduced-motion state', () => {
@@ -53,7 +54,7 @@ describe('procedural model contracts', () => {
   test('reference cover exposes every identity-defining layer and flap hinge', () => {
     const cover = createCoverModel(true);
     expect([...cover.parts.keys()]).toEqual(expect.arrayContaining([
-      'portfolio-title', 'year-script', 'folder-back', 'folder-tab', 'inner-sheet',
+      'portfolio-title', 'folder-back', 'folder-tab', 'inner-sheet',
       'paper-sheet', 'paper-bottom-pivot', 'front-flap', 'greeting-carrier',
       'flap-label', 'folder-assembly', 'left-info', 'right-info', 'bottom-rail',
     ]));
@@ -63,16 +64,30 @@ describe('procedural model contracts', () => {
     cover.dispose();
   });
 
+  test('cover title uses the supplied sticker artwork instead of the year line', () => {
+    const cover = createCoverModel(true);
+    const title = cover.parts.get('portfolio-title') as THREE.Mesh;
+    const material = title.material as THREE.MeshBasicMaterial;
+    const plane = title.geometry as THREE.PlaneGeometry;
+
+    expect(coverTitleStickerUrl).toBe('/assets/cover/portfolio-title-sticker.webp');
+    expect(material.map).toBeInstanceOf(THREE.Texture);
+    expect(material.transparent).toBe(true);
+    // The plane mirrors the trimmed 1681 x 656 artwork so it never stretches.
+    expect(plane.parameters.width / plane.parameters.height).toBeCloseTo(1681 / 656, 4);
+    expect(cover.parts.has('year-script')).toBe(false);
+    cover.dispose();
+  });
+
   test('cover scales only the central folder while surrounding typography stays full size', async () => {
     const cover = createCoverModel(true);
     const assembly = cover.parts.get('folder-assembly')!;
     const title = cover.parts.get('portfolio-title')!;
-    const year = cover.parts.get('year-script')!;
     const leftInfo = cover.parts.get('left-info')!;
     const rightInfo = cover.parts.get('right-info')!;
 
     expect(assembly.scale.toArray()).toEqual([0.85, 0.85, 0.85]);
-    for (const typography of [title, year, leftInfo, rightInfo]) {
+    for (const typography of [title, leftInfo, rightInfo]) {
       expect(typography.parent).toBe(cover.root);
       expect(typography.scale.toArray()).toEqual([1, 1, 1]);
     }
@@ -83,7 +98,7 @@ describe('procedural model contracts', () => {
     cover.dispose();
   });
 
-  test('cover greeting keeps its title and two subtitle rows visually separated', () => {
+  test('cover greeting keeps its title and the English name visually separated', () => {
     const originalDocument = globalThis.document;
     const drawCalls: Array<{ text: string; y: number; fontSize: number }> = [];
     let currentFont = '';
@@ -113,14 +128,12 @@ describe('procedural model contracts', () => {
 
     try {
       const cover = createCoverModel(true);
-      const rows = ['韩婧仪', 'GINNY · 电商运营', 'E-COMMERCE OPERATIONS']
-        .map((text) => drawCalls.find((call) => call.text === text)!);
-      const [title, firstSubtitle, secondSubtitle] = rows;
+      const rows = ['韩婧仪', 'GINNY'].map((text) => drawCalls.find((call) => call.text === text)!);
+      const [title, subtitle] = rows;
       const bottom = (row: { y: number; fontSize: number }) => row.y + row.fontSize / 2;
       const top = (row: { y: number; fontSize: number }) => row.y - row.fontSize / 2;
 
-      expect(bottom(title!)).toBeLessThan(top(firstSubtitle!));
-      expect(bottom(firstSubtitle!)).toBeLessThan(top(secondSubtitle!));
+      expect(bottom(title!)).toBeLessThan(top(subtitle!));
       cover.dispose();
     } finally {
       if (originalDocument === undefined) Reflect.deleteProperty(globalThis, 'document');
@@ -295,8 +308,16 @@ describe('procedural model contracts', () => {
     expect(frontDepth).toBeLessThan(0.115);
     expect(frontMaterial.color.getHex()).not.toBe(rearMaterial.color.getHex());
     expect([...folder.parts.keys()].filter((id) => id.startsWith('collage-piece-'))).toHaveLength(6);
-    expect(outsideLabel.position.y).toBeGreaterThan(rearBottom - 0.27);
-    expect(outsideLabel.position.y).toBeLessThan(rearBottom - 0.12);
+    // The caption hugs the folder: the panel's transparent padding may sit level
+    // with the seam, while the drawn line (painted at 42% of the panel height)
+    // still starts below it instead of drifting into the row underneath.
+    const labelHeight = (outsideLabel as THREE.Mesh<THREE.BoxGeometry>).geometry.parameters.height;
+    const labelTop = outsideLabel.position.y + labelHeight / 2;
+    const lineTop = labelTop - labelHeight * 0.42;
+    expect(labelTop).toBeLessThan(rearBottom + 0.06);
+    expect(labelTop).toBeGreaterThan(rearBottom - 0.2);
+    expect(lineTop).toBeLessThan(rearBottom - 0.02);
+    expect(labelHeight).toBeGreaterThan(0.6);
 
     folder.dispose();
   });
@@ -366,11 +387,11 @@ describe('procedural model contracts', () => {
 
     expect(pieces).toHaveLength(5);
     expect(pieces.map((piece) => piece.userData.stickerSource)).toEqual([
-      'reader_king_of_the_book_hill.png',
-      'russian_cute_flower.png',
-      'duoduo_come_on.png',
-      'uplift_each_other.png',
-      'retro_boombox.png',
+      'reader_king_of_the_book_hill.webp',
+      'russian_cute_flower.webp',
+      'duoduo_come_on.webp',
+      'uplift_each_other.webp',
+      'retro_boombox.webp',
     ]);
 
     folder.root.updateMatrixWorld(true);
@@ -402,8 +423,8 @@ describe('procedural model contracts', () => {
     const posterFolder = createDirectoryFolderModel(portfolioContent.categories[2]!, 'technology', true);
     expect([...uiFolder.parts.values()].filter((object) => object.userData.stickerSource)).toHaveLength(6);
     expect([...posterFolder.parts.values()].filter((object) => object.userData.stickerSource)).toHaveLength(5);
-    expect(uiFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('retro_boombox.png');
-    expect(posterFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('reader_monster_reader.png');
+    expect(uiFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('retro_boombox.webp');
+    expect(posterFolder.parts.get('collage-piece-0')?.userData.stickerSource).toBe('reader_monster_reader.webp');
     uiFolder.dispose();
     posterFolder.dispose();
   });
@@ -414,11 +435,11 @@ describe('procedural model contracts', () => {
 
     expect(pieces).toHaveLength(5);
     expect(pieces.map((piece) => piece.userData.stickerSource)).toEqual([
-      'reader_bedtime_reader.png',
-      'duoduo_love_duoduo.png',
-      'russian_deal_hands.png',
-      'productivity_green_arrow.png',
-      'retro_tv_face.png',
+      'reader_bedtime_reader.webp',
+      'duoduo_love_duoduo.webp',
+      'russian_deal_hands.webp',
+      'productivity_green_arrow.webp',
+      'retro_tv_face.webp',
     ]);
     folder.dispose();
   });
@@ -429,11 +450,11 @@ describe('procedural model contracts', () => {
 
     expect(pieces).toHaveLength(5);
     expect(pieces.map((piece) => piece.userData.stickerSource)).toEqual([
-      'productivity_teamwork_badge.png',
-      'russian_coffee.png',
-      'retro_record_player.png',
-      'reader_fantastic_dinosaur.png',
-      'duoduo_full_marks.png',
+      'productivity_teamwork_badge.webp',
+      'russian_coffee.webp',
+      'retro_record_player.webp',
+      'reader_fantastic_dinosaur.webp',
+      'duoduo_full_marks.webp',
     ]);
     folder.dispose();
   });
@@ -804,7 +825,10 @@ describe('procedural model contracts', () => {
     const turningPivot = scrapbook.parts.get('turning-page-pivot')!;
     expect(leftPivot.rotation.y).toBeCloseTo(.16);
     expect(rightPivot.rotation.y).toBeCloseTo(-.16);
-    expect(turningPivot.position.z).toBeCloseTo(leftPivot.position.z);
+    // The back print is 0.01 farther from its pivot than the resting print.
+    const landingPosition = new THREE.Vector3(0, 0, -.01)
+      .applyEuler(leftPivot.rotation).add(leftPivot.position);
+    expect(turningPivot.position.distanceTo(landingPosition)).toBeLessThan(.0001);
     expect(scrapbook.parts.get('book-hover-rig')!.rotation.y).toBeCloseTo(hoverRotation);
 
     scrapbook.update(.016, 1);
@@ -876,6 +900,12 @@ describe('procedural model contracts', () => {
       'internship-label-kuaishou', 'internship-label-jd', 'close-tag',
     ]));
     expect(journey.interactiveTargets.some((target) => target.userData.action === 'journey-hover-surface')).toBe(true);
+    const pageBackground = journey.parts.get('internship-page-background') as THREE.Mesh<THREE.PlaneGeometry>;
+    expect(pageBackground.userData.assetSource).toBe('internship-background.png');
+    expect(pageBackground.geometry.parameters.width).toBe(18);
+    expect(pageBackground.geometry.parameters.height).toBe(32);
+    expect(pageBackground.rotation.z).toBeCloseTo(Math.PI / 2);
+    expect(journey.parts.get('corkboard-hover-rig')?.scale.x).toBeCloseTo(2 / 3);
     const highestArtworkZ = Math.max(
       journey.parts.get('lined-paper')!.position.z,
       journey.parts.get('photo-stack')!.position.z,
@@ -885,7 +915,7 @@ describe('procedural model contracts', () => {
     const miguLabel = journey.parts.get('internship-label-migu') as THREE.Mesh;
     expect(jdLabel.position.z).toBeGreaterThan(highestArtworkZ);
     expect(jdLabel.castShadow).toBe(true);
-    expect(jdLabel.userData.assetSource).toBe('internship_label_jd.png');
+    expect(jdLabel.userData.assetSource).toBe('internship_label_jd.webp');
     expect(journey.interactiveTargets).toEqual(expect.arrayContaining([
       miguLabel,
       journey.parts.get('internship-label-youdao'),
@@ -913,6 +943,7 @@ describe('procedural model contracts', () => {
 
   test('internship board opens and closes each supplied detail paper', async () => {
     const journey = createJourneyModel(portfolioContent.categories[2]!, true);
+    journey.root.userData.popupScale = 1.2;
     const popup = journey.parts.get('internship-detail-popup')!;
     const backdrop = journey.parts.get('internship-detail-backdrop') as THREE.Mesh;
     const details = ['migu', 'youdao', 'kuaishou', 'jd'];
@@ -925,11 +956,12 @@ describe('procedural model contracts', () => {
     expect(backdropSize.y).toBeGreaterThanOrEqual(40);
     for (const [index, id] of details.entries()) {
       const detail = journey.parts.get(`internship-detail-${id}`) as THREE.Mesh;
-      expect(detail.userData.assetSource).toBe(`internship_detail_${id}.png`);
+      // Every sheet ships the same text-free plate because its copy is real text.
+      expect(detail.userData.assetSource).toBe(SHEET_PLATE);
       await journey.actions.setProject(index);
       expect(popup.visible).toBe(true);
       expect(detail.visible).toBe(true);
-      expect(detail.scale.x).toBe(1);
+      expect(detail.scale.x).toBe(1.2);
       expect((detail.material as THREE.MeshBasicMaterial).opacity).toBe(1);
 
       await journey.actions.setProject(-1);

@@ -1,27 +1,30 @@
 import * as THREE from 'three';
 import type { ScrapbookPage } from '../content/types';
 import { damp } from '../three/runtime';
+import { loadImageAsset } from '../performance/imageAssets';
 
 const directory = '/assets/education/page-1/';
-export const educationBackground = `${directory}background.png`;
+export const educationBackground = `${directory}background.webp`;
 // Source rectangles exclude transparent padding; placement is relative to the supplied paper.
 export const educationStickers = [
-  { id: 'title', label: '天津仁爱学院', file: 'title.png', crop: [50, 145, 1880, 345], source: [1967, 639], box: [.058, .176, .755, .12] },
-  { id: 'gpa', label: '绩点 3.94 / 4，专业排名 1 / 94', file: 'gpa.png', crop: [14, 14, 1917, 462], source: [1945, 486], box: [.063, .55, .874, .155] },
-  { id: 'rank', label: '连续四年排名第一', file: 'rank.png', crop: [89, 160, 2000, 390], source: [2172, 724], box: [.065, .72, .48, .068] },
-  { id: 'honors', label: '国家奖学金、天津市政府奖学金、天津市优秀学生、校长奖学金', file: 'honors.png', crop: [130, 195, 1910, 335], source: [2172, 724], box: [.062, .805, .875, .114] },
+  { id: 'title', label: '天津仁爱学院', file: 'title.webp', crop: [50, 145, 1880, 345], source: [1967, 639], box: [.058, .176, .755, .12] },
+  { id: 'gpa', label: '绩点 3.94 / 4，专业排名 1 / 94', file: 'gpa.webp', crop: [14, 14, 1917, 462], source: [1945, 486], box: [.063, .55, .874, .155] },
+  { id: 'rank', label: '连续四年排名第一', file: 'rank.webp', crop: [89, 160, 2000, 390], source: [2172, 724], box: [.065, .72, .48, .068] },
+  { id: 'honors', label: '国家奖学金、天津市政府奖学金、天津市优秀学生、校长奖学金', file: 'honors.webp', crop: [130, 195, 1910, 335], source: [2172, 724], box: [.062, .805, .875, .114] },
 ] as const;
+
+export const educationAssetUrls = [
+  `${directory}background.webp`,
+  ...educationStickers.map((item) => `${directory}${item.file}`),
+];
 
 const images = new Map<string, HTMLImageElement>();
 let loading: Promise<void> | undefined;
 export function loadEducationArtwork(): Promise<void> {
   if (typeof document === 'undefined') return Promise.resolve();
-  loading ??= Promise.all(['background.png', ...educationStickers.map((item) => item.file)].map((file) => new Promise<void>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => { images.set(file, image); resolve(); };
-    image.onerror = () => reject(new Error(`Unable to load education artwork: ${file}`));
-    image.src = `${directory}${file}`;
-  }))).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
+  loading ??= Promise.all(['background.webp', ...educationStickers.map((item) => item.file)].map(async (file) => {
+    images.set(file, await loadImageAsset(`${directory}${file}`, 'high'));
+  })).then(() => undefined).catch((error: unknown) => { loading = undefined; throw error; });
   return loading;
 }
 
@@ -30,7 +33,7 @@ export function hasEducationArtwork(page: ScrapbookPage): boolean {
 }
 
 export function paintEducationArtwork(ctx: CanvasRenderingContext2D, flatten: boolean): boolean {
-  const background = images.get('background.png');
+  const background = images.get('background.webp');
   if (!background) return false;
   ctx.drawImage(background, 0, 0, 1200, 1420);
   if (flatten) for (const sticker of educationStickers) {

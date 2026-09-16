@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createTextTexture, type TextTextureOptions } from './textures';
+import { createTextTexture, textCanvasSize, type TextTextureOptions } from './textures';
 import { createReferenceTexture, type ReferenceGraphic } from './referenceGraphics';
 
 export function roundedRectShape(width: number, height: number, radius: number): THREE.Shape {
@@ -82,7 +82,7 @@ export function makeTextPanel(width: number, height: number, depth: number, opti
     transparent: options.transparentBackground ?? false,
     opacity: options.transparentBackground ? 0 : 1,
   });
-  const face = new THREE.MeshBasicMaterial({ map: createTextTexture(options), toneMapped: false, transparent: options.transparentBackground ?? false });
+  const face = new THREE.MeshBasicMaterial({ map: createTextTexture(panelTextureOptions(width, height, options)), toneMapped: false, transparent: options.transparentBackground ?? false });
   const mesh = new THREE.Mesh(geometry, [edge, edge.clone(), edge.clone(), edge.clone(), face, edge.clone()]);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -103,9 +103,28 @@ export function updateTextPanel(mesh: THREE.Mesh, options: TextTextureOptions): 
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   const face = materials[4];
   if (!(face instanceof THREE.MeshStandardMaterial) && !(face instanceof THREE.MeshBasicMaterial)) return;
+  const geometry = mesh.geometry;
+  const parameters = geometry instanceof THREE.BoxGeometry ? geometry.parameters : undefined;
   face.map?.dispose();
-  face.map = createTextTexture(options);
+  face.map = createTextTexture(panelTextureOptions(parameters?.width ?? 1, parameters?.height ?? 1, options));
   face.needsUpdate = true;
+}
+
+/**
+ * A text panel paints its texture straight onto one face, so the canvas has to
+ * share the panel's aspect ratio and hold enough texels for the display that
+ * will show it. Otherwise every glyph is either stretched along one axis or
+ * magnified past its resolution, and the text stays soft no matter how the
+ * camera moves.
+ */
+export function panelTextureOptions(
+  panelWidth: number,
+  panelHeight: number,
+  options: TextTextureOptions,
+): TextTextureOptions {
+  const devicePixelRatio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+  const { width, height } = textCanvasSize(panelWidth, panelHeight, devicePixelRatio);
+  return { ...options, width, height };
 }
 
 export function makeTag(label: string, color: string, action: string): THREE.Mesh {
@@ -114,10 +133,44 @@ export function makeTag(label: string, color: string, action: string): THREE.Mes
     background: color,
     foreground: '#172033',
     align: 'center',
-    width: 640,
+    width: 700,
     height: 240,
-    titleScale: 0.2,
+    titleScale: 0.28,
   });
   tag.userData.action = action;
   return tag;
+}
+
+/** Height shared by the scene's chip controls so they read as one set. */
+export const ACTION_CHIP_HEIGHT = 0.62;
+
+export type ActionChipOptions = {
+  title: string;
+  /** Small second line under the label, e.g. what pressing it will do. */
+  hint?: string;
+  background: string;
+  foreground: string;
+  hintScale?: number;
+};
+
+/**
+ * A solid plate with one centred label and an optional hint, used by the
+ * directory's two top controls and the end page's restart button. The shared
+ * recipe keeps their height, type scale and flat printed look identical, and
+ * the accent rule is switched off because these panels centre their text — the
+ * rule is drawn against the left edge and would float on its own.
+ */
+export function makeActionChip(width: number, options: ActionChipOptions): THREE.Mesh {
+  return makeTextPanel(width, ACTION_CHIP_HEIGHT, 0.1, {
+    title: options.title,
+    subtitle: options.hint,
+    background: options.background,
+    foreground: options.foreground,
+    align: 'center',
+    titleScale: 0.34,
+    subtitleScale: options.hintScale ?? 0.18,
+    titleY: options.hint ? 0.34 : 0.5,
+    subtitleY: 0.72,
+    accent: 'rgba(0,0,0,0)',
+  });
 }

@@ -5,6 +5,7 @@ import { aboutProfile } from '../content/profile';
 import { createTimelineController } from '../animation/timelines';
 import { makeTag, makeTextPanel, roundedRectShape, makeExtrudedMesh, updateTextPanel } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
+import { configureTextTexture } from '../three/textures';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -30,10 +31,7 @@ function createCanvasTexture(width: number, height: number, background: string, 
   context.fillRect(0, 0, width, height);
   paint(context, width, height);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  texture.needsUpdate = true;
-  return texture;
+  return configureTextTexture(texture);
 }
 
 function makePaperPanel(width: number, height: number, depth: number, edgeColor: string, texture: THREE.Texture): THREE.Mesh {
@@ -164,8 +162,7 @@ function makePortraitTexture(): THREE.Texture {
   context.fillStyle = '#FFD9E3';
   context.fillRect(0, 0, width, height);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  configureTextTexture(texture);
   const paint = (image: HTMLImageElement): void => {
     context.fillStyle = '#FFD9E3';
     context.fillRect(0, 0, width, height);
@@ -431,9 +428,9 @@ export function createAboutCvModel(category: Category, reducedMotion = false): S
       background: '#EFFF69',
       foreground: '#172033',
       align: 'center',
-      width: 640,
+      width: 700,
       height: 240,
-      titleScale: 0.2,
+      titleScale: 0.28,
     });
   };
 

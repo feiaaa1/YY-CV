@@ -3,6 +3,7 @@ import type { Category } from '../content/types';
 import { createTimelineController } from '../animation/timelines';
 import { makeExtrudedMesh, makeTextPanel, roundedRectShape } from '../three/geometry';
 import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
+import { getLoadedImageAsset } from '../performance/imageAssets';
 
 export type CollageVariant = 'sport' | 'business' | 'technology' | 'culture' | 'cinema';
 
@@ -26,45 +27,57 @@ const COLLAGE_REST_Z = 0.075;
 type StickerAsset = { file: string; width: number; height: number; scale: number };
 
 const brandStickers: StickerAsset[] = [
-  { file: 'reader_king_of_the_book_hill.png', width: 320, height: 294, scale: 1.08 },
-  { file: 'russian_cute_flower.png', width: 252, height: 258, scale: 0.82 },
-  { file: 'duoduo_come_on.png', width: 458, height: 267, scale: 1.16 },
-  { file: 'uplift_each_other.png', width: 799, height: 1560, scale: 0.94 },
-  { file: 'retro_boombox.png', width: 190, height: 155, scale: 0.76 },
+  { file: 'reader_king_of_the_book_hill.webp', width: 320, height: 294, scale: 1.08 },
+  { file: 'russian_cute_flower.webp', width: 252, height: 258, scale: 0.82 },
+  { file: 'duoduo_come_on.webp', width: 458, height: 267, scale: 1.16 },
+  { file: 'uplift_each_other.webp', width: 799, height: 1560, scale: 0.94 },
+  { file: 'retro_boombox.webp', width: 190, height: 155, scale: 0.76 },
 ] as const;
 
 const uiWebStickers: StickerAsset[] = [
-  { file: 'retro_boombox.png', width: 190, height: 155, scale: 0.78 },
-  { file: 'reader_stellar_start.png', width: 234, height: 325, scale: 1.02 },
-  { file: 'russian_thinking_blob.png', width: 276, height: 247, scale: 0.88 },
-  { file: 'duoduo_power_duoduo.png', width: 460, height: 267, scale: 1.12 },
-  { file: 'presentation_ribbon.png', width: 299, height: 212, scale: 0.9 },
-  { file: 'retro_eye_heart.png', width: 164, height: 144, scale: 0.76 },
+  { file: 'retro_boombox.webp', width: 190, height: 155, scale: 0.78 },
+  { file: 'reader_stellar_start.webp', width: 234, height: 325, scale: 1.02 },
+  { file: 'russian_thinking_blob.webp', width: 276, height: 247, scale: 0.88 },
+  { file: 'duoduo_power_duoduo.webp', width: 460, height: 267, scale: 1.12 },
+  { file: 'presentation_ribbon.webp', width: 299, height: 212, scale: 0.9 },
+  { file: 'retro_eye_heart.webp', width: 164, height: 144, scale: 0.76 },
 ];
 
 const posterStickers: StickerAsset[] = [
-  { file: 'reader_monster_reader.png', width: 234, height: 211, scale: 1.02 },
-  { file: 'duoduo_birthday.png', width: 464, height: 266, scale: 1.14 },
-  { file: 'russian_good_vibes.png', width: 154, height: 215, scale: 0.84 },
-  { file: 'productivity_pencil.png', width: 200, height: 142, scale: 0.92 },
-  { file: 'retro_lightning.png', width: 95, height: 110, scale: 0.76 },
+  { file: 'reader_monster_reader.webp', width: 234, height: 211, scale: 1.02 },
+  { file: 'duoduo_birthday.webp', width: 464, height: 266, scale: 1.14 },
+  { file: 'russian_good_vibes.webp', width: 154, height: 215, scale: 0.84 },
+  { file: 'productivity_pencil.webp', width: 200, height: 142, scale: 0.92 },
+  { file: 'retro_lightning.webp', width: 95, height: 110, scale: 0.76 },
 ];
 
 const illustrationStickers: StickerAsset[] = [
-  { file: 'reader_bedtime_reader.png', width: 303, height: 213, scale: 1 },
-  { file: 'duoduo_love_duoduo.png', width: 461, height: 280, scale: 1.1 },
-  { file: 'russian_deal_hands.png', width: 199, height: 218, scale: 0.86 },
-  { file: 'productivity_green_arrow.png', width: 1135, height: 1021, scale: 0.96 },
-  { file: 'retro_tv_face.png', width: 184, height: 127, scale: 0.8 },
+  { file: 'reader_bedtime_reader.webp', width: 303, height: 213, scale: 1 },
+  { file: 'duoduo_love_duoduo.webp', width: 461, height: 280, scale: 1.1 },
+  { file: 'russian_deal_hands.webp', width: 199, height: 218, scale: 0.86 },
+  { file: 'productivity_green_arrow.webp', width: 1135, height: 1021, scale: 0.96 },
+  { file: 'retro_tv_face.webp', width: 184, height: 127, scale: 0.8 },
 ];
 
 const projectStickers: StickerAsset[] = [
-  { file: 'productivity_teamwork_badge.png', width: 1920, height: 1920, scale: 0.84 },
-  { file: 'russian_coffee.png', width: 221, height: 203, scale: 0.82 },
-  { file: 'retro_record_player.png', width: 170, height: 144, scale: 0.78 },
-  { file: 'reader_fantastic_dinosaur.png', width: 314, height: 297, scale: 1 },
-  { file: 'duoduo_full_marks.png', width: 464, height: 286, scale: 0.85 },
+  { file: 'productivity_teamwork_badge.webp', width: 1920, height: 1920, scale: 0.84 },
+  { file: 'russian_coffee.webp', width: 221, height: 203, scale: 0.82 },
+  { file: 'retro_record_player.webp', width: 170, height: 144, scale: 0.78 },
+  { file: 'reader_fantastic_dinosaur.webp', width: 314, height: 297, scale: 1 },
+  { file: 'duoduo_full_marks.webp', width: 464, height: 286, scale: 0.85 },
 ];
+
+const stickerSets: Array<[string, readonly StickerAsset[]]> = [
+  ['brand-stickers', brandStickers],
+  ['ui-web-stickers', uiWebStickers],
+  ['poster-stickers', posterStickers],
+  ['illustration-stickers', illustrationStickers],
+  ['project-stickers', projectStickers],
+];
+
+export const directoryStickerAssetUrls = stickerSets.flatMap(([directory, stickers]) => (
+  stickers.map((sticker) => `/assets/directory/${directory}/${sticker.file}`)
+));
 
 function mixColor(color: string, target: string, amount: number): string {
   return `#${new THREE.Color(color).lerp(new THREE.Color(target), amount).getHexString()}`;
@@ -170,14 +183,20 @@ function addStickerCollage(group: THREE.Group, parts: Map<string, THREE.Object3D
     const maxSize = STICKER_MAX_SIZE * sticker.scale;
     const width = aspect >= 1 ? maxSize : maxSize * aspect;
     const height = aspect >= 1 ? maxSize / aspect : maxSize;
-    const texture = typeof document === 'undefined'
-      ? null
-      : new THREE.TextureLoader().load(`/assets/directory/${directory}/${sticker.file}`, (loaded) => {
-        loaded.colorSpace = THREE.SRGBColorSpace;
-        loaded.minFilter = THREE.LinearMipmapLinearFilter;
-        loaded.magFilter = THREE.LinearFilter;
-        loaded.anisotropy = 8;
-      });
+    const source = `/assets/directory/${directory}/${sticker.file}`;
+    const cachedImage = getLoadedImageAsset(source);
+    const texture = cachedImage
+      ? new THREE.Texture(cachedImage)
+      : typeof document === 'undefined'
+        ? null
+        : new THREE.TextureLoader().load(source);
+    if (texture) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.anisotropy = 8;
+      texture.needsUpdate = true;
+    }
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       color: texture ? '#FFFFFF' : '#F7F2E8',
@@ -262,20 +281,26 @@ export function createDirectoryFolderModel(category: Category, variant: CollageV
   parts.set(frontPocket.name, frontPocket);
   targets.push(frontPocket);
 
-  const outsideLabel = makeTextPanel(2.45, 0.48, 0.035, {
+  // One line names each folder: the second, smaller row that used to sit under
+  // it only repeated the category and turns to mush at phone sizes. The line
+  // stays centred in the panel so the caption keeps the same footprint.
+  // Texture aspect matches the panel so the glyphs keep their true
+  // proportions.
+  const outsideLabel = makeTextPanel(2.5, 0.66, 0.035, {
     title: category.description.zh,
-    subtitle: category.title.zh,
     background: '#2B8AF0',
     foreground: '#FFF9E7',
     align: 'center',
-    width: 950,
-    height: 260,
-    titleScale: 0.2,
-    subtitleScale: 0.07,
+    width: 1250,
+    height: 330,
+    titleScale: 0.3,
+    titleY: 0.42,
     transparentBackground: true,
   });
   outsideLabel.name = 'outside-label';
-  outsideLabel.position.set(0, BOTTOM_SEAM_Y - 0.2, 0.02);
+  // Hug the folder: the caption reads as the folder's own name instead of
+  // drifting into the row underneath.
+  outsideLabel.position.set(0, BOTTOM_SEAM_Y - 0.05 - 0.25, 0.02);
   root.add(outsideLabel);
   parts.set(outsideLabel.name, outsideLabel);
 

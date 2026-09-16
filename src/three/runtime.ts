@@ -1,9 +1,21 @@
 import * as THREE from 'three';
 
+/**
+ * Visible area the camera gives a model, in the model's own units. Models that
+ * arrange panels by hand use it to keep their composition inside the viewport
+ * instead of guessing at world coordinates.
+ */
+export type SculptLayout = {
+  isMobile: boolean;
+  halfWidth: number;
+  halfHeight: number;
+};
+
 export type SculptModelActions = {
   setHovered(hovered: boolean): void;
   setHoveredTarget(target: THREE.Object3D | null): void;
   setReducedMotion(reduced: boolean): void;
+  setLayout(layout: SculptLayout): void;
   open(): Promise<void> | void;
   close(): Promise<void> | void;
   setProject(index: number): Promise<void> | void;
@@ -59,6 +71,7 @@ export function createHandle(
     setHovered: modelActions.setHovered ?? (() => undefined),
     setHoveredTarget: modelActions.setHoveredTarget ?? (() => undefined),
     setReducedMotion: modelActions.setReducedMotion ?? ((reduced) => { root.userData.reducedMotion = reduced; }),
+    setLayout: modelActions.setLayout ?? (() => undefined),
     open: modelActions.open ?? (() => undefined),
     close: modelActions.close ?? (() => undefined),
     setProject: modelActions.setProject ?? ((index) => { root.userData.projectIndex = index; }),

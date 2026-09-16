@@ -190,6 +190,8 @@ describe('experience lifecycle', () => {
 
     expect(parallax).toMatch(/this\.state\.reducedMotion/);
     expect(parallax).toMatch(/const cameraX = tracksPointer \? this\.pointer\.x \* 0\.12 : 0;/);
-    expect(parallax).toMatch(/const cameraY = 0\.25 \+ \(tracksPointer \? this\.pointer\.y \* 0\.08 : 0\);/);
+    // The camera only follows the pointer on the animated screens; an open
+    // internship sheet levels the camera instead.
+    expect(parallax).toMatch(/const cameraY = sheetOpen \? 0 : 0\.25 \+ \(tracksPointer \? this\.pointer\.y \* 0\.08 : 0\);/);
   });
 });

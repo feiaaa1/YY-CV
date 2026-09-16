@@ -9,6 +9,7 @@ import { createHonorsStickerLayers, hasHonorsArtwork, paintHonorsArtwork } from 
 import { createBsuStickerLayers, hasBsuArtwork, paintBsuArtwork } from '../education/bsuArtwork';
 import { createBsuRightStickerLayers, hasBsuRightArtwork, paintBsuRightArtwork } from '../education/bsuRightArtwork';
 import { createEducationBookmarkLayers } from '../education/bookmarks';
+import { configureTextTexture } from '../three/textures';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -34,10 +35,7 @@ function makeCanvasTexture(width: number, height: number, background: string, pa
   context.fillRect(0, 0, width, height);
   paint(context, width, height);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  texture.needsUpdate = true;
-  return texture;
+  return configureTextTexture(texture);
 }
 
 function drawText(
@@ -266,9 +264,7 @@ function updatePageTexture(page: THREE.Group, texture: THREE.Texture): void {
   const print = page.userData.printMesh as THREE.Mesh | undefined;
   if (!print) return;
   const material = print.material as THREE.MeshBasicMaterial;
-  material.map?.dispose();
   material.map = texture;
-  material.needsUpdate = true;
 }
 
 function createTurningPage(frontTexture: THREE.Texture, backTexture: THREE.Texture): THREE.Group {
@@ -302,12 +298,8 @@ function updateTurningTextures(page: THREE.Group, frontTexture: THREE.Texture, b
   const back = page.userData.backPrint as THREE.Mesh;
   const frontMaterial = front.material as THREE.MeshBasicMaterial;
   const backMaterial = back.material as THREE.MeshBasicMaterial;
-  frontMaterial.map?.dispose();
-  backMaterial.map?.dispose();
   frontMaterial.map = frontTexture;
   backMaterial.map = backTexture;
-  frontMaterial.needsUpdate = true;
-  backMaterial.needsUpdate = true;
 }
 
 function makeRoundControl(id: string, label: string, action: string): THREE.Group {
@@ -340,6 +332,24 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
   const inactiveLeaves: THREE.Group[] = [];
   const inactiveLeafBaseX: number[] = [];
   const restingOpenAngle = 0.16;
+  const spreadTextures = new Map<string, THREE.Texture>();
+  const spreadTexture = (page: ScrapbookPage, side: 'left' | 'right', flatten = false): THREE.Texture => {
+    const key = `${page.id}:${side}:${flatten ? 'flat' : 'live'}`;
+    let texture = spreadTextures.get(key);
+    if (!texture) {
+      texture = makeSpreadTexture(page, side, flatten);
+      spreadTextures.set(key, texture);
+    }
+    return texture;
+  };
+  pages.forEach((page) => {
+    spreadTexture(page, 'left');
+    spreadTexture(page, 'right');
+    spreadTexture(page, 'left', true);
+    spreadTexture(page, 'right', true);
+  });
+  root.userData.preloadTextures = [...spreadTextures.values()];
+  const initialPage = pages[initialIndex]!;
 
   const backing = makeExtrudedMesh(roundedRectShape(9.15, 6.35, 0.32), '#414D6A', 0.08, 0.04);
   backing.name = 'scrapbook-backing';
@@ -365,9 +375,9 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
   root.add(leftPivot, rightPivot);
   parts.set(leftPivot.name, leftPivot); parts.set(rightPivot.name, rightPivot);
 
-  const leftPage = createRoundedPage('active-left-page', 4.25, 5.18, makeSpreadTexture(pages[0]!, 'left'), '#DCD7C9');
+  const leftPage = createRoundedPage('active-left-page', 4.25, 5.18, spreadTexture(initialPage, 'left'), '#DCD7C9');
   leftPage.position.x = -2.1;
-  leftPage.userData.pageId = pages[0]!.id;
+  leftPage.userData.pageId = initialPage.id;
   leftPivot.add(leftPage); parts.set(leftPage.name, leftPage); targets.push(leftPage);
   const educationLayers = createEducationStickerLayers();
   leftPage.add(educationLayers.group);
@@ -379,9 +389,9 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
   bsuLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
   let hoveredArtworkTarget: THREE.Object3D | null = null;
 
-  const rightPage = createRoundedPage('active-right-page', 4.25, 5.18, makeSpreadTexture(pages[0]!, 'right'), '#DCD7C9');
+  const rightPage = createRoundedPage('active-right-page', 4.25, 5.18, spreadTexture(initialPage, 'right'), '#DCD7C9');
   rightPage.position.x = 2.1;
-  rightPage.userData.pageId = pages[0]!.id;
+  rightPage.userData.pageId = initialPage.id;
   rightPage.userData.action = 'next-project';
   rightPivot.add(rightPage); parts.set(rightPage.name, rightPage); targets.push(rightPage);
   const honorsLayers = createHonorsStickerLayers();
@@ -397,8 +407,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
   turningPivot.name = 'turning-page-pivot';
   turningPivot.position.z = 0.25;
   const turningPage = createTurningPage(
-    makeSpreadTexture(pages[0]!, 'right'),
-    makeSpreadTexture(pages[1] ?? pages[0]!, 'left'),
+    spreadTexture(initialPage, 'right', true),
+    spreadTexture(pages[initialIndex + 1] ?? initialPage, 'left', true),
   );
   turningPage.position.x = 2.1;
   turningPage.visible = false;
@@ -502,22 +512,24 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
     degreeBookmarks.setActive(index);
     leftPage.userData.pageId = page.id;
     rightPage.userData.pageId = page.id;
-    updatePageTexture(leftPage, makeSpreadTexture(page, 'left'));
-    updatePageTexture(rightPage, makeSpreadTexture(page, 'right'));
-    updateTextPanel(leftPhoto, {
-      title: `${index + 1}`.padStart(2, '0'), subtitle: `${page.title.en}\nSELECTED SCREEN`, kicker: 'PHOTO',
-      background: '#FFF8F0', foreground: '#343641', accent: page.palette[2], width: 720, height: 920,
-    });
-    updateTextPanel(leftNote, {
-      title: page.title.zh, subtitle: page.kicker, background: page.palette[2], foreground: '#40414A', width: 850, height: 500,
-    });
-    updateTextPanel(rightPhoto, {
-      title: `${index + 1}`.padStart(2, '0'), subtitle: `${page.kicker}\nPROJECT DETAIL`, kicker: 'PHOTO',
-      background: '#FFF8F0', foreground: '#343641', accent: page.palette[1], width: 720, height: 920,
-    });
-    updateTextPanel(rightSticker, {
-      title: page.title.en, subtitle: page.subtitle.en, background: page.palette[1], foreground: '#40414A', width: 850, height: 470,
-    });
+    updatePageTexture(leftPage, spreadTexture(page, 'left'));
+    updatePageTexture(rightPage, spreadTexture(page, 'right'));
+    if (!page.education) {
+      updateTextPanel(leftPhoto, {
+        title: `${index + 1}`.padStart(2, '0'), subtitle: `${page.title.en}\nSELECTED SCREEN`, kicker: 'PHOTO',
+        background: '#FFF8F0', foreground: '#343641', accent: page.palette[2], width: 720, height: 920,
+      });
+      updateTextPanel(leftNote, {
+        title: page.title.zh, subtitle: page.kicker, background: page.palette[2], foreground: '#40414A', width: 850, height: 500,
+      });
+      updateTextPanel(rightPhoto, {
+        title: `${index + 1}`.padStart(2, '0'), subtitle: `${page.kicker}\nPROJECT DETAIL`, kicker: 'PHOTO',
+        background: '#FFF8F0', foreground: '#343641', accent: page.palette[1], width: 720, height: 920,
+      });
+      updateTextPanel(rightSticker, {
+        title: page.title.en, subtitle: page.subtitle.en, background: page.palette[1], foreground: '#40414A', width: 850, height: 470,
+      });
+    }
     const pageLabel = `${index + 1} / ${pages.length} Pages`;
     pageCounter.userData.pageLabel = pageLabel;
     updateTextPanel(pageCounter, {
@@ -582,37 +594,48 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
       honorsLayers.group.visible = false;
       bsuRightLayers.group.visible = false;
       // While turning, print a complete flattened left sheet; restore live layers on landing.
-      updatePageTexture(leftPage, makeSpreadTexture(forward ? currentPage : nextPage, 'left', true));
-      turningPivot.rotation.y = forward ? -restingOpenAngle : restingOpenAngle;
-      const sourceDepth = forward ? rightPivot.position.z : leftPivot.position.z;
-      const targetDepth = forward ? leftPivot.position.z : rightPivot.position.z;
-      turningPivot.position.z = sourceDepth;
+      updatePageTexture(leftPage, spreadTexture(forward ? currentPage : nextPage, 'left', true));
+      const sourcePivot = forward ? rightPivot : leftPivot;
+      const destinationPivot = forward ? leftPivot : rightPivot;
+      turningPivot.position.copy(sourcePivot.position);
+      turningPivot.rotation.copy(sourcePivot.rotation);
+      // After a half turn the back print sits at +0.065, while the resting
+      // print sits at +0.055. Compensate in the destination's local frame.
+      const landingPosition = new THREE.Vector3(0, 0, -.01)
+        .applyEuler(destinationPivot.rotation).add(destinationPivot.position);
       turningPage.rotation.set(0, 0, 0);
       turningPage.position.x = forward ? 2.1 : -2.1;
       updateTurningTextures(
         turningPage,
-        makeSpreadTexture(currentPage, forward ? 'right' : 'left', true),
-        makeSpreadTexture(nextPage, forward ? 'left' : 'right', true),
+        spreadTexture(currentPage, forward ? 'right' : 'left', true),
+        spreadTexture(nextPage, forward ? 'left' : 'right', true),
       );
       if (forward) {
         // Keep the uncovered destination page complete while the current leaf moves away.
-        updatePageTexture(rightPage, makeSpreadTexture(nextPage, 'right', true));
+        updatePageTexture(rightPage, spreadTexture(nextPage, 'right', true));
         rightPage.userData.pageId = nextPage.id;
       } else {
         // Preserve the current right page until the returning leaf covers it.
-        updatePageTexture(rightPage, makeSpreadTexture(currentPage, 'right', true));
-        updatePageTexture(leftPage, makeSpreadTexture(nextPage, 'left', true));
+        updatePageTexture(rightPage, spreadTexture(currentPage, 'right', true));
+        updatePageTexture(leftPage, spreadTexture(nextPage, 'left', true));
         leftPage.userData.pageId = nextPage.id;
       }
       turningPage.visible = true;
-      const endAngle = forward ? -Math.PI + restingOpenAngle : Math.PI - restingOpenAngle;
+      const endAngle = destinationPivot.rotation.y + (forward ? -Math.PI : Math.PI);
       return timelines.run((timeline) => {
         timeline
           .to([leftCollage.scale, rightCollage.scale], { x: 0.15, y: 0.15, z: 0.15, duration: 0.24 }, 0)
           .to(turningPage.rotation, { z: forward ? -0.025 : 0.025, duration: 0.38, yoyo: true, repeat: 1 }, 0)
+          .to(turningPivot.rotation, {
+            x: destinationPivot.rotation.x, y: endAngle, z: destinationPivot.rotation.z,
+            duration: 0.86, ease: 'power2.inOut',
+          }, 0)
+          .to(turningPivot.position, {
+            x: landingPosition.x, y: landingPosition.y,
+            duration: 0.86, ease: 'power2.inOut',
+          }, 0)
           .to(turningPivot.position, { z: 0.25, duration: 0.34, ease: 'power2.out' }, 0)
-          .to(turningPivot.position, { z: targetDepth, duration: 0.34, ease: 'power2.in' }, 0.52)
-          .to(turningPivot.rotation, { y: endAngle, duration: 0.86, ease: 'power2.inOut' }, 0)
+          .to(turningPivot.position, { z: landingPosition.z, duration: 0.34, ease: 'power2.in' }, 0.52)
           .call(() => {
             applyPage(nextIndex);
             if (root.userData.open) {
@@ -623,8 +646,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
             turningPivot.rotation.y = 0;
             turningPage.rotation.set(0, 0, 0);
             root.userData.turning = false;
-          }, [], 0.87)
-          .to([leftCollage.scale, rightCollage.scale], { x: 1, y: 1, z: 1, duration: 0.28 }, 0.87);
+          }, [], 0.86)
+          .to([leftCollage.scale, rightCollage.scale], { x: 1, y: 1, z: 1, duration: 0.28 }, 0.86);
       });
     },
   }, (delta) => {
@@ -636,6 +659,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
     honorsLayers.update(hoveredArtworkTarget, stickerLift && honorsLayers.group.visible, delta);
     bsuRightLayers.update(hoveredArtworkTarget, stickerLift && bsuRightLayers.group.visible, delta);
     degreeBookmarks.update(hoveredArtworkTarget, Boolean(lift) && !root.userData.turning, delta);
+    // Keep the book and both resting surfaces fixed throughout the handoff.
+    if (root.userData.turning) return;
     hoverRig.rotation.y = damp(hoverRig.rotation.y, pointer.x * 0.14 * lift, 7, delta);
     hoverRig.rotation.x = damp(hoverRig.rotation.x, -pointer.y * 0.07 * lift, 7, delta);
     hoverRig.rotation.z = damp(hoverRig.rotation.z, pointer.x * 0.012 * lift, 7, delta);
@@ -657,6 +682,21 @@ export function createScrapbookModel(category: Category, reducedMotion = false, 
     });
   });
   const baseDispose = handle.dispose;
-  handle.dispose = () => { timelines.killActiveTimeline(); baseDispose(); };
+  handle.dispose = () => {
+    timelines.killActiveTimeline();
+    const attachedTextures = new Set<THREE.Texture>();
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => Object.values(material).forEach((value) => {
+        if (value instanceof THREE.Texture) attachedTextures.add(value);
+      }));
+    });
+    spreadTextures.forEach((texture) => {
+      if (!attachedTextures.has(texture)) texture.dispose();
+    });
+    root.userData.preloadTextures = [];
+    baseDispose();
+  };
   return handle;
 }
