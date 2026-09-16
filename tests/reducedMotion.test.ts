@@ -108,20 +108,33 @@ describe('live reduced motion', () => {
     scrapbook.dispose();
   });
 
-  test('journey stops hover tilt and station pulsing under reduced motion', () => {
+  test('corkboard stops hover tilt and note floating under reduced motion', () => {
     const journey = createJourneyModel(portfolioContent.categories[2]!, false);
-    const rig = journey.parts.get('journey-hover-rig')!;
-    const station = journey.parts.get('station-1')!;
+    const rig = journey.parts.get('corkboard-hover-rig')!;
+    const label = journey.parts.get('internship-label-youdao')!;
+    const labelRestZ = label.position.z;
 
     journey.root.userData.hoverPointer = { x: 0.9, y: 0.7 };
     journey.actions.setHovered(true);
     settle(journey.update, 0, 40);
     expect(Math.abs(rig.rotation.y)).toBeGreaterThan(0.02);
+    expect(label.position.z).not.toBeCloseTo(labelRestZ, 5);
 
     journey.actions.setReducedMotion(true);
     settle(journey.update, 0);
     expect(Math.abs(rig.rotation.y)).toBeLessThan(1e-4);
-    expect(station.scale.x).toBeCloseTo(1, 3);
+    expect(label.position.z).toBeCloseTo(labelRestZ, 3);
+    journey.dispose();
+  });
+
+  test('corkboard does not enlarge a targeted internship label under reduced motion', () => {
+    const journey = createJourneyModel(portfolioContent.categories[2]!, true);
+    const label = journey.parts.get('internship-label-migu')!;
+
+    journey.actions.setHoveredTarget(label);
+    journey.actions.setHovered(true);
+
+    expect(label.scale.toArray()).toEqual([1, 1, 1]);
     journey.dispose();
   });
 });

@@ -4,11 +4,11 @@ import { portfolioContent } from '../src/content/portfolio';
 import * as THREE from 'three';
 import { PortfolioExperience } from '../src/experience/PortfolioExperience';
 
-test('hidden first-page stickers do not intercept clicks on the next spread', async () => {
+test('hidden BSU stickers do not intercept clicks on the bachelor spread', async () => {
   const model = createScrapbookModel(portfolioContent.categories[1]!, true);
   await model.actions.setProject(1);
   model.root.updateMatrixWorld(true);
-  const gpa = model.parts.get('education-sticker-gpa')!;
+  const gpa = model.parts.get('bsu-sticker-gpa')!;
   const point = gpa.getWorldPosition(new THREE.Vector3());
   const camera = new THREE.PerspectiveCamera(38, 1, .1, 100);
   camera.position.set(point.x, point.y, 20);
@@ -21,13 +21,15 @@ test('hidden first-page stickers do not intercept clicks on the next spread', as
     targetOwners: new Map([[leftPage, model]]), finishTag: { visible: false },
     directoryGroup: { visible: false },
   }) as { pickTarget(): THREE.Object3D | null };
-  expect(experience.pickTarget()).toBe(leftPage);
-  expect(experience.pickTarget()?.userData.action).toBe('previous-project');
+  const target = experience.pickTarget();
+  expect(target?.name.startsWith('bsu-sticker-')).toBe(false);
+  expect(target?.userData.action).toBe('previous-project');
   model.dispose();
 });
 
-test('first learning page has four independent stickers that lift, restore, and disappear on the next spread', async () => {
+test('bachelor page has four independent stickers that lift, restore, and disappear on the master spread', async () => {
   const model = createScrapbookModel(portfolioContent.categories[1]!, true);
+  await model.actions.setProject(1);
   const stickers = ['title', 'gpa', 'rank', 'honors'].map((id) => model.parts.get(`education-sticker-${id}`)!);
   expect(stickers.every(Boolean)).toBe(true);
   expect(stickers.every((sticker) => model.interactiveTargets.includes(sticker))).toBe(true);
@@ -47,19 +49,42 @@ test('first learning page has four independent stickers that lift, restore, and 
   model.actions.setHoveredTarget(gpa);
   model.update(2, 4);
   expect(gpa.scale.x).toBeCloseTo(1);
-  await model.actions.setProject(1);
-  expect(model.parts.get('education-stickers')!.visible).toBe(false);
   await model.actions.setProject(0);
+  expect(model.parts.get('education-stickers')!.visible).toBe(false);
+  await model.actions.setProject(1);
   expect(model.parts.get('education-stickers')!.visible).toBe(true);
   model.dispose();
 });
 
-test('first spread’s right page exposes the supplied title, note, and five award stickers', () => {
+test('bachelor spread’s right page exposes the supplied title, note, and five award stickers', async () => {
   const model = createScrapbookModel(portfolioContent.categories[1]!, true);
+  await model.actions.setProject(1);
   const stickers = ['title', 'small-steps', 'award-01', 'award-02', 'award-03', 'award-04', 'award-05']
     .map((id) => model.parts.get(`honors-sticker-${id}`)!);
   expect(stickers.every(Boolean)).toBe(true);
   expect(stickers.every((sticker) => model.interactiveTargets.includes(sticker))).toBe(true);
+  expect(stickers.every((sticker) => sticker.userData.action === 'hover-honors-sticker')).toBe(true);
   expect(model.parts.get('honors-stickers')!.visible).toBe(true);
+  model.dispose();
+});
+
+test('first learning spread exposes both supplied BSU backgrounds and all independent stickers', () => {
+  const model = createScrapbookModel(portfolioContent.categories[1]!, true);
+  const stickerIds = ['title', 'media-badge', 'megaphone', 'stadium', 'gpa'];
+  const stickers = stickerIds.map((id) => model.parts.get(`bsu-sticker-${id}`)!);
+
+  expect(stickers.every(Boolean)).toBe(true);
+  expect(stickers.every((sticker) => model.interactiveTargets.includes(sticker))).toBe(true);
+  expect(model.parts.get('bsu-stickers')!.visible).toBe(true);
+  expect(stickers.every((sticker) => sticker.userData.action === 'hover-education-sticker')).toBe(true);
+  expect(model.parts.get('education-stickers')!.visible).toBe(false);
+  expect(model.parts.get('honors-stickers')!.visible).toBe(false);
+  const rightStickerIds = ['title', 'knowledge', 'academic', 'practice'];
+  const rightStickers = rightStickerIds.map((id) => model.parts.get(`bsu-right-sticker-${id}`)!);
+  expect(rightStickers.every(Boolean)).toBe(true);
+  expect(rightStickers.every((sticker) => model.interactiveTargets.includes(sticker))).toBe(true);
+  expect(rightStickers.every((sticker) => sticker.userData.action === 'next-project')).toBe(true);
+  expect(model.parts.get('bsu-right-stickers')!.visible).toBe(true);
+
   model.dispose();
 });

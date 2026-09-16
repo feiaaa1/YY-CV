@@ -17,9 +17,12 @@ import {
 } from './gesturePolicy';
 import { resolveInteractionAction } from './interactions';
 import { countProjects, describeScreen } from './accessibility';
-import { findCategory, hasCategory } from './categories';
+import { findCategory } from './categories';
 import { createEducationArtworkElement, hasEducationArtwork, loadEducationArtwork } from '../education/artwork';
 import { hasHonorsArtwork, loadHonorsArtwork } from '../education/honorsArtwork';
+import { createBsuArtworkElement, hasBsuArtwork, loadBsuArtwork } from '../education/bsuArtwork';
+import { createBsuRightArtworkElement, hasBsuRightArtwork, loadBsuRightArtwork } from '../education/bsuRightArtwork';
+import { loadEducationBookmarks } from '../education/bookmarks';
 import { runLockedTransition } from './transitions';
 import {
   createExperienceState,
@@ -545,14 +548,15 @@ export class PortfolioExperience {
     }
 
     if (action.type === 'OPEN_CATEGORY') {
-      if (!hasCategory(this.content, action.categoryId)) {
+      const category = this.content.categories.find((item) => item.id === action.categoryId);
+      if (!category) {
         this.announce('该分类不可用，已留在作品目录。', true);
         return;
       }
       await this.runTransition(
         async () => {
           await this.folderHandles.get(action.categoryId)?.actions.open();
-          this.applyAction(action);
+          this.applyAction({ ...action, initialProjectIndex: category.initialProjectIndex });
           this.directoryGroup.visible = false;
           await this.showDetail(action.categoryId);
         },
@@ -562,6 +566,27 @@ export class PortfolioExperience {
           this.showOnly('directory');
         },
         '打开该分类时出现问题，已返回作品目录。',
+      );
+      this.renderAccessibilityControls();
+      return;
+    }
+
+    if (action.type === 'SET_PROJECT_INDEX') {
+      const category = this.currentCategory();
+      const count = this.currentProjectCount();
+      if (!category || category.presentation !== 'scrapbook') return;
+      if (action.projectIndex < 0 || action.projectIndex >= count || action.projectIndex === this.state.projectIndex) return;
+      const previousIndex = this.state.projectIndex;
+      await this.runTransition(
+        async () => {
+          this.applyAction(action);
+          await this.detailHandle?.actions.setProject(action.projectIndex);
+        },
+        async () => {
+          this.applyAction({ type: 'SET_PROJECT_INDEX', projectIndex: previousIndex });
+          await this.detailHandle?.actions.setProject(previousIndex);
+        },
+        '切换学历页面时出现问题，已回到上一个页面。',
       );
       this.renderAccessibilityControls();
       return;
@@ -707,7 +732,7 @@ export class PortfolioExperience {
       : category.presentation === 'scrapbook'
         ? '#414D6A'
         : category.presentation === 'journey'
-          ? '#A8CFE1'
+          ? '#FFFFFF'
         : category.presentation === 'book' ? '#C91F58' : '#A75EDF');
     switch (category.presentation) {
       case 'about': {
@@ -722,7 +747,10 @@ export class PortfolioExperience {
         const { createScrapbookModel } = await import('../models/scrapbook');
         if (category.scrapbookPages?.some(hasEducationArtwork)) await loadEducationArtwork();
         if (category.scrapbookPages?.some(hasHonorsArtwork)) await loadHonorsArtwork();
-        this.detailHandle = createScrapbookModel(category, this.state.reducedMotion);
+        if (category.scrapbookPages?.some(hasBsuArtwork)) await loadBsuArtwork();
+        if (category.scrapbookPages?.some(hasBsuRightArtwork)) await loadBsuRightArtwork();
+        if (category.scrapbookPages?.some((page) => page.education)) await loadEducationBookmarks();
+        this.detailHandle = createScrapbookModel(category, this.state.reducedMotion, this.state.projectIndex);
         break;
       }
       case 'journey': {
@@ -743,7 +771,11 @@ export class PortfolioExperience {
     }
     if (!this.detailHandle) return;
     this.detailHandle.root.scale.setScalar(0.02);
-    this.detailHandle.root.userData.targetScale = getDetailScale(this.container.clientWidth, this.container.clientHeight);
+    this.detailHandle.root.userData.targetScale = getDetailScale(
+      this.container.clientWidth,
+      this.container.clientHeight,
+      category.presentation,
+    );
     this.scene.add(this.detailHandle.root);
     this.registerHandle(this.detailHandle);
     this.screenModels.detail = this.detailHandle;
@@ -819,6 +851,9 @@ export class PortfolioExperience {
       if (hasEducationArtwork(this.currentCategory()!.scrapbookPages![this.state.projectIndex]!)) {
         this.semanticRegion.replaceChildren(createEducationArtworkElement());
       }
+      if (hasBsuArtwork(this.currentCategory()!.scrapbookPages![this.state.projectIndex]!)) {
+        this.semanticRegion.replaceChildren(createBsuArtworkElement(), createBsuRightArtworkElement());
+      }
       let paragraph: HTMLElement | undefined;
       for (const line of education.lines) {
         if (line.kind === 'heading') {
@@ -836,6 +871,10 @@ export class PortfolioExperience {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = control.label;
+      if (education && control.action.type === 'SET_PROJECT_INDEX') {
+        button.classList.add('education-degree-bookmark', `education-degree-bookmark--${control.action.projectIndex === 0 ? 'master' : 'bachelor'}`);
+        if (control.action.projectIndex === this.state.projectIndex) button.setAttribute('aria-current', 'page');
+      }
       button.addEventListener('click', () => this.dispatch(control.action));
       return button;
     });
@@ -869,7 +908,9 @@ export class PortfolioExperience {
     this.finishTag.position.set(profile.isMobile ? 1.75 : 4.7, profile.isMobile ? 4.55 : 3.45, 0.1);
     this.thanksHandle.root.scale.setScalar(profile.isMobile ? 0.82 : 1);
     this.coverHandle.root.scale.setScalar(getCoverScale(width, height));
-    if (this.detailHandle) this.detailHandle.root.userData.targetScale = getDetailScale(width, height);
+    if (this.detailHandle) {
+      this.detailHandle.root.userData.targetScale = getDetailScale(width, height, this.currentCategory()?.presentation);
+    }
   };
 
   private readonly onReducedMotionChange = (event: MediaQueryListEvent): void => {

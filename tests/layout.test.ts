@@ -39,4 +39,9 @@ describe('responsive scene layout', () => {
     expect(getDetailScale(390, 844)).toBeLessThanOrEqual(0.64);
     expect(getDetailScale(1440, 900)).toBe(1);
   });
+
+  test('keeps the square internship board larger than wide detail objects on mobile', () => {
+    expect(getDetailScale(390, 844, 'journey')).toBe(0.76);
+    expect(getDetailScale(390, 844, 'journey')).toBeGreaterThan(getDetailScale(390, 844));
+  });
 });

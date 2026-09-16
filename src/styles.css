@@ -120,6 +120,19 @@ canvas {
     cursor: pointer;
   }
   .sr-controls--education button:last-child { grid-column: 3; background: #e9e5da; }
+  .sr-controls--education .education-degree-bookmark {
+    color: transparent;
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+  .sr-controls--education .education-degree-bookmark--bachelor { background-image: url('/assets/education/bookmarks/bachelor.png'); }
+  .sr-controls--education .education-degree-bookmark--master { background-image: url('/assets/education/bookmarks/master.png'); }
+  .sr-controls--education .education-degree-bookmark[aria-current='page'] {
+    filter: drop-shadow(0 3px 3px rgb(31 45 32 / 24%));
+    transform: translateY(-2px);
+  }
   .sr-controls--education button:focus-visible { outline: 3px solid #466c50; outline-offset: 2px; }
 }
 

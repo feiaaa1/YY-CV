@@ -3,13 +3,13 @@ import { portfolioContent } from '../src/content/portfolio';
 import { aboutProfile } from '../src/content/profile';
 
 describe('portfolio content', () => {
-  test('contains five bilingual categories with three projects each', () => {
+  test('contains five bilingual categories and no legacy projects in the corkboard folder', () => {
     expect(portfolioContent.categories).toHaveLength(5);
     for (const category of portfolioContent.categories) {
       expect(category.title.zh.length).toBeGreaterThan(0);
       expect(category.title.en.length).toBeGreaterThan(0);
       expect(category.description.zh.length).toBeGreaterThan(0);
-      expect(category.projects).toHaveLength(3);
+      expect(category.projects).toHaveLength(category.id === 'poster-editorial' ? 0 : 3);
     }
   });
 
@@ -38,11 +38,10 @@ describe('portfolio content', () => {
     expect(aboutProfile.tags).toContain('王者最强王者20星');
   });
 
-  test('provides four placeholder internship stops for the journey folder', () => {
+  test('provides the four real internship entries used by the corkboard', () => {
     const category = portfolioContent.categories.find(({ id }) => id === 'poster-editorial');
-    const experiences = category?.journeyExperiences;
-    expect(experiences).toHaveLength(4);
-    expect(new Set(experiences?.map(({ id }) => id) ?? []).size).toBe(4);
+    expect(category?.journeyExperiences?.map(({ id }) => id)).toEqual(['migu', 'youdao', 'kuaishou', 'jd']);
+    expect(category?.title.zh).toBe('实习经历');
   });
 
   test('provides learning experience spreads instead of sample design projects', () => {

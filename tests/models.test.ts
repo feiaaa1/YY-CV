@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 import { describe, expect, test } from 'vitest';
 import { portfolioContent } from '../src/content/portfolio';
 import { createFolderModel } from '../src/models/folder';
@@ -760,6 +761,19 @@ describe('procedural model contracts', () => {
     scrapbook.dispose();
   });
 
+  test('education scrapbook can open on the master page and exposes direct degree bookmarks', () => {
+    const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true, 0);
+    const bachelor = scrapbook.parts.get('education-bookmark-bachelor')!;
+    const master = scrapbook.parts.get('education-bookmark-master')!;
+
+    expect(scrapbook.root.userData.projectIndex).toBe(0);
+    expect(scrapbook.parts.get('active-left-page')?.userData.pageId).toBe('bsu-1');
+    expect(bachelor.userData).toMatchObject({ action: 'select-project-index', projectIndex: 1 });
+    expect(master.userData).toMatchObject({ action: 'select-project-index', projectIndex: 0 });
+    expect(scrapbook.interactiveTargets).toEqual(expect.arrayContaining([bachelor, master]));
+    scrapbook.dispose();
+  });
+
   test('scrapbook turns a dedicated double-sided leaf without snapping resting pages across the spine', async () => {
     const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
     const turningPivot = scrapbook.parts.get('turning-page-pivot');
@@ -772,6 +786,30 @@ describe('procedural model contracts', () => {
     expect(turningPage?.visible).toBe(false);
     expect(scrapbook.parts.get('left-page-pivot')?.rotation.y).toBeCloseTo(0);
     expect(scrapbook.parts.get('right-page-pivot')?.rotation.y).toBeCloseTo(0);
+    scrapbook.dispose();
+  });
+
+  test('scrapbook lands a turned leaf at the resting page depth without a second page adjustment', async () => {
+    const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, false);
+    await scrapbook.actions.open();
+    scrapbook.actions.setHovered(true);
+    scrapbook.root.userData.hoverPointer = { x: .7, y: -.4 };
+    scrapbook.update(.2, 0);
+    const hoverRotation = scrapbook.parts.get('book-hover-rig')!.rotation.y;
+
+    await scrapbook.actions.setProject(1);
+
+    const leftPivot = scrapbook.parts.get('left-page-pivot')!;
+    const rightPivot = scrapbook.parts.get('right-page-pivot')!;
+    const turningPivot = scrapbook.parts.get('turning-page-pivot')!;
+    expect(leftPivot.rotation.y).toBeCloseTo(.16);
+    expect(rightPivot.rotation.y).toBeCloseTo(-.16);
+    expect(turningPivot.position.z).toBeCloseTo(leftPivot.position.z);
+    expect(scrapbook.parts.get('book-hover-rig')!.rotation.y).toBeCloseTo(hoverRotation);
+
+    scrapbook.update(.016, 1);
+    expect(leftPivot.rotation.y).toBeCloseTo(.16);
+    expect(rightPivot.rotation.y).toBeCloseTo(-.16);
     scrapbook.dispose();
   });
 
@@ -794,7 +832,7 @@ describe('procedural model contracts', () => {
     scrapbook.dispose();
   });
 
-  test('scrapbook opens into a persistent V angle instead of flattening at the spine', async () => {
+  test('scrapbook keeps a stable V angle while the whole book responds to hover', async () => {
     const scrapbook = createScrapbookModel(portfolioContent.categories[1]!, true);
     const hoverRig = scrapbook.parts.get('book-hover-rig');
     const leftPivot = scrapbook.parts.get('left-page-pivot');
@@ -822,67 +860,99 @@ describe('procedural model contracts', () => {
 
     expect(hoverRig?.rotation.y).toBeGreaterThan(0.045);
     expect(Math.abs(hoverRig?.rotation.x ?? 0)).toBeGreaterThan(0.018);
-    expect(leftPivot?.rotation.y).toBeGreaterThan(restingAngle);
-    expect(rightPivot?.rotation.y).toBeLessThan(-restingAngle);
+    expect(leftPivot?.rotation.y).toBeCloseTo(restingAngle);
+    expect(rightPivot?.rotation.y).toBeCloseTo(-restingAngle);
     expect(scrapbook.root.rotation.y).toBe(0);
     scrapbook.dispose();
   });
 
-  test('journey invitation exposes the layered case, route and four independent stations', () => {
+  test('internship board exposes the supplied artwork and internship label images', () => {
     const journey = createJourneyModel(portfolioContent.categories[2]!, true);
 
     expect([...journey.parts.keys()]).toEqual(expect.arrayContaining([
-      'outer-case', 'inner-rim', 'invitation-sheet', 'blue-scallop-header',
-      'coral-scallop-header', 'journey-title', 'journey-route', 'pennant-string',
-      'cloud-field', 'balloon-left', 'balloon-right', 'bottom-ribbon', 'paperclip',
-      'station-0', 'station-1', 'station-2', 'station-3', 'experience-popup',
-      'popup-close', 'close-tag',
+      'board-back', 'corkboard-background', 'lined-paper', 'torn-paper', 'calendar',
+      'photo-stack', 'flower-decoration', 'heart-decoration', 'keychain-decoration',
+      'internship-label-migu', 'internship-label-youdao',
+      'internship-label-kuaishou', 'internship-label-jd', 'close-tag',
     ]));
-    expect([...journey.parts.keys()].filter((id) => id.startsWith('route-dash-')).length).toBeGreaterThanOrEqual(10);
-    expect([...journey.parts.keys()].filter((id) => id.startsWith('decoration-')).length).toBeGreaterThanOrEqual(12);
-    expect(journey.interactiveTargets.filter((target) => target.userData.action === 'select-journey-station')).toHaveLength(4);
     expect(journey.interactiveTargets.some((target) => target.userData.action === 'journey-hover-surface')).toBe(true);
+    const highestArtworkZ = Math.max(
+      journey.parts.get('lined-paper')!.position.z,
+      journey.parts.get('photo-stack')!.position.z,
+      journey.parts.get('keychain-decoration')!.position.z,
+    );
+    const jdLabel = journey.parts.get('internship-label-jd') as THREE.Mesh;
+    const miguLabel = journey.parts.get('internship-label-migu') as THREE.Mesh;
+    expect(jdLabel.position.z).toBeGreaterThan(highestArtworkZ);
+    expect(jdLabel.castShadow).toBe(true);
+    expect(jdLabel.userData.assetSource).toBe('internship_label_jd.png');
+    expect(journey.interactiveTargets).toEqual(expect.arrayContaining([
+      miguLabel,
+      journey.parts.get('internship-label-youdao'),
+      journey.parts.get('internship-label-kuaishou'),
+      jdLabel,
+    ]));
+    [miguLabel, journey.parts.get('internship-label-youdao'), journey.parts.get('internship-label-kuaishou'), jdLabel]
+      .forEach((label, stationIndex) => {
+        expect(label?.userData).toMatchObject({ action: 'select-journey-station', stationIndex });
+      });
+    const labels = ['migu', 'youdao', 'kuaishou', 'jd']
+      .map((id) => journey.parts.get(`internship-label-${id}`) as THREE.Mesh<THREE.PlaneGeometry>);
+    expect(labels.every((label) => label.geometry.parameters.width >= 2.37)).toBe(true);
+    expect(labels.every((label) => label.geometry.parameters.width <= 2.58)).toBe(true);
+    expect(labels.some((label) => label.rotation.z < -0.08)).toBe(true);
+    expect(labels.some((label) => label.rotation.z > 0.08)).toBe(true);
+    for (let index = 1; index < labels.length; index += 1) {
+      const previous = labels[index - 1]!;
+      const current = labels[index]!;
+      const combinedHalfWidth = (previous.geometry.parameters.width + current.geometry.parameters.width) / 2;
+      expect(previous.position.distanceTo(current.position)).toBeLessThan(combinedHalfWidth);
+    }
     journey.dispose();
   });
 
-  test('journey selection lifts one station and opens its matching experience card', async () => {
+  test('internship board opens and closes each supplied detail paper', async () => {
     const journey = createJourneyModel(portfolioContent.categories[2]!, true);
-    const selectedStation = journey.parts.get('station-2');
-    const otherStation = journey.parts.get('station-0');
-    const popup = journey.parts.get('experience-popup');
-    const selectedStart = selectedStation?.position.clone();
+    const popup = journey.parts.get('internship-detail-popup')!;
+    const backdrop = journey.parts.get('internship-detail-backdrop') as THREE.Mesh;
+    const details = ['migu', 'youdao', 'kuaishou', 'jd'];
 
-    expect(popup?.visible).toBe(false);
-    await journey.actions.open();
-    const reveal = journey.actions.setProject(2);
+    expect(popup.visible).toBe(false);
+    expect(backdrop.userData.action).toBe('close-journey-popup');
+    backdrop.geometry.computeBoundingBox();
+    const backdropSize = backdrop.geometry.boundingBox!.getSize(new THREE.Vector3());
+    expect(backdropSize.x).toBeGreaterThanOrEqual(40);
+    expect(backdropSize.y).toBeGreaterThanOrEqual(40);
+    for (const [index, id] of details.entries()) {
+      const detail = journey.parts.get(`internship-detail-${id}`) as THREE.Mesh;
+      expect(detail.userData.assetSource).toBe(`internship_detail_${id}.png`);
+      await journey.actions.setProject(index);
+      expect(popup.visible).toBe(true);
+      expect(detail.visible).toBe(true);
+      expect(detail.scale.x).toBe(1);
+      expect((detail.material as THREE.MeshBasicMaterial).opacity).toBe(1);
 
-    expect(journey.root.userData.selectedStation).toBe(2);
-    expect(popup?.visible).toBe(true);
-    expect(popup?.userData.experienceId).toBe('internship-03');
-    const popupGeometry = (popup as THREE.Mesh).geometry as THREE.BoxGeometry;
-    expect(popupGeometry.parameters.width).toBeCloseTo(8.3);
-    expect(popupGeometry.parameters.height).toBeCloseTo(4.4);
-    expect(popup?.position.z).toBeGreaterThan(1);
-    expect(selectedStation?.scale.x).toBeGreaterThan(otherStation?.scale.x ?? 0);
-    expect(popup?.scale.x).toBeLessThan(0.2);
-    await reveal;
-    expect(popup?.scale.x).toBeCloseTo(1);
-    expect(selectedStation?.position.y).toBeGreaterThan(selectedStart?.y ?? 0);
-    expect(selectedStation?.position.z).toBeGreaterThan(selectedStart?.z ?? 0);
-    let dimmedOpacity = 1;
-    otherStation?.traverse((object) => {
-      if (object instanceof THREE.Mesh && object.material instanceof THREE.MeshStandardMaterial) {
-        dimmedOpacity = Math.min(dimmedOpacity, object.material.opacity);
-      }
-    });
-    expect(dimmedOpacity).toBeLessThan(0.75);
+      await journey.actions.setProject(-1);
+      expect(popup.visible).toBe(false);
+      expect(detail.visible).toBe(false);
+    }
+    journey.dispose();
+  });
 
-    const dismiss = journey.actions.setProject(-1);
-    expect(journey.root.userData.selectedStation).toBe(-1);
-    expect(popup?.visible).toBe(true);
-    await dismiss;
-    expect(popup?.visible).toBe(false);
-    expect(selectedStation?.position.y).toBeCloseTo(selectedStart?.y ?? 0);
+  test('internship labels use interruptible GSAP hover lift and scale feedback', () => {
+    const journey = createJourneyModel(portfolioContent.categories[2]!, false);
+    const label = journey.parts.get('internship-label-youdao')!;
+    const restZ = label.position.z;
+
+    journey.actions.setHoveredTarget(label);
+    for (const tween of gsap.getTweensOf([label.scale, label.position])) tween.progress(1);
+    expect(label.scale.x).toBeCloseTo(1.06);
+    expect(label.position.z).toBeCloseTo(restZ + 0.1);
+
+    journey.actions.setHoveredTarget(null);
+    for (const tween of gsap.getTweensOf([label.scale, label.position])) tween.progress(1);
+    expect(label.scale.x).toBe(1);
+    expect(label.position.z).toBeCloseTo(restZ);
     journey.dispose();
   });
 

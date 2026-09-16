@@ -51,31 +51,18 @@ function describeDirectory(content: PortfolioContent): ScreenDescriptor {
 }
 
 function describeJourneyDetail(category: Category, state: ExperienceState): Omit<ScreenDescriptor, 'heading'> {
-  const experiences = category.journeyExperiences ?? [];
-  const controls: ScreenControl[] = experiences.map((experience, stationIndex) => ({
-    label: `查看站点 ${stationIndex + 1}：${experience.company.zh}`,
-    action: { type: 'SELECT_JOURNEY_STATION', stationIndex },
-  }));
-
   const selected = state.selectedJourneyStation === null
     ? undefined
-    : experiences[state.selectedJourneyStation];
-
-  if (selected) controls.push({ label: '返回旅途地图', action: { type: 'CLOSE_JOURNEY_POPUP' } });
-
-  const details = selected
-    ? [
-      `${selected.company.zh} / ${selected.company.en}`,
-      `${selected.role.zh}，${selected.period}`,
-      `${selected.location.zh}。${selected.summary.zh}`,
-    ]
-    : [`实习旅途共有 ${experiences.length} 个站点，选择一个站点查看经历。`];
-
-  const status = selected
-    ? `正在浏览实习旅途，第 ${(state.selectedJourneyStation ?? 0) + 1} 个站点。`
-    : '正在浏览实习旅途，选择一个站点查看经历。';
-
-  return { status, details, controls };
+    : category.journeyExperiences?.[state.selectedJourneyStation];
+  return {
+    status: selected ? `正在浏览${selected.company.zh}实习详情。` : '正在浏览实习作品软木板。',
+    details: selected
+      ? [`${selected.company.zh} / ${selected.company.en}`, `${selected.role.zh}，${selected.period}`, selected.summary.zh]
+      : [`${category.title.zh} / ${category.title.en}`, '软木板上陈列咪咕、网易有道、快手与京东实习便签。'],
+    controls: selected
+      ? [{ label: '关闭实习详情', action: { type: 'CLOSE_JOURNEY_POPUP' } }]
+      : [],
+  };
 }
 
 function describeScrapbookDetail(category: Category, state: ExperienceState): Omit<ScreenDescriptor, 'heading'> {
@@ -84,10 +71,13 @@ function describeScrapbookDetail(category: Category, state: ExperienceState): Om
   const page = pages[state.projectIndex];
   const controls: ScreenControl[] = [];
 
-  if (state.projectIndex > 0) {
+  if (page?.education) {
+    controls.push({ label: '本科', action: { type: 'SET_PROJECT_INDEX', projectIndex: 1 } });
+    controls.push({ label: '硕士', action: { type: 'SET_PROJECT_INDEX', projectIndex: 0 } });
+  } else if (state.projectIndex > 0) {
     controls.push({ label: page?.education ? '上一页' : '上一个项目', action: { type: 'PREVIOUS_PROJECT', projectCount: count } });
   }
-  if (state.projectIndex < count - 1) {
+  if (!page?.education && state.projectIndex < count - 1) {
     controls.push({ label: page?.education ? '下一页' : '下一个项目', action: { type: 'NEXT_PROJECT', projectCount: count } });
   }
 

@@ -12,7 +12,7 @@ export type ExperienceState = {
 
 export type ExperienceAction =
   | { type: 'ENTER_DIRECTORY' }
-  | { type: 'OPEN_CATEGORY'; categoryId: string }
+  | { type: 'OPEN_CATEGORY'; categoryId: string; initialProjectIndex?: number }
   | { type: 'NEXT_PROJECT'; projectCount: number }
   | { type: 'PREVIOUS_PROJECT'; projectCount: number }
   | { type: 'SELECT_JOURNEY_STATION'; stationIndex: number }
@@ -44,7 +44,7 @@ export function reduceExperience(state: ExperienceState, action: ExperienceActio
         ...state,
         screen: 'detail',
         selectedCategoryId: action.categoryId,
-        projectIndex: 0,
+        projectIndex: action.initialProjectIndex ?? 0,
         selectedJourneyStation: null,
         visitedCategoryIds: state.visitedCategoryIds.includes(action.categoryId)
           ? state.visitedCategoryIds

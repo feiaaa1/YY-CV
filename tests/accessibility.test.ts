@@ -45,31 +45,27 @@ describe('screen semantics', () => {
     expect(details).toContain(project.year);
   });
 
-  test('describes the selected journey station and its company', () => {
+  test('describes the internship corkboard without the removed station content', () => {
     const category = portfolioContent.categories.find((item) => item.id === journeyId)!;
-    const experience = category.journeyExperiences![2]!;
-    const state = stateOn(journeyId, { projectIndex: 2, selectedJourneyStation: 2 });
+    const state = stateOn(journeyId);
     const details = describeScreen(portfolioContent, state).details.join(' ');
 
-    expect(details).toContain(experience.company.zh);
-    expect(details).toContain(experience.role.zh);
-    expect(details).toContain(experience.period);
+    expect(details).toContain(category.title.zh);
+    expect(details).toContain('软木板');
   });
 
-  test('omits the scrapbook previous control on the first page', () => {
+  test('offers direct bachelor and master controls on the first education page', () => {
     const control = labels(stateOn(scrapbookId, { projectIndex: 0 }));
 
-    expect(control).not.toContain('上一页');
-    expect(control).toContain('下一页');
+    expect(control).toEqual(['本科', '硕士', '关闭详情']);
   });
 
-  test('omits the scrapbook next control on the last page', () => {
+  test('offers the same direct degree controls on the last education page', () => {
     const category = portfolioContent.categories.find((item) => item.id === scrapbookId)!;
     const lastIndex = category.scrapbookPages!.length - 1;
     const control = labels(stateOn(scrapbookId, { projectIndex: lastIndex }));
 
-    expect(control).toContain('上一页');
-    expect(control).not.toContain('下一页');
+    expect(control).toEqual(['本科', '硕士', '关闭详情']);
   });
 
   test('keeps both paging controls for cyclic book and ticket presentations', () => {
@@ -89,14 +85,19 @@ describe('screen semantics', () => {
     expect(control).toContain('关闭详情');
   });
 
-  test('offers a station control per journey experience and a way back once open', () => {
-    const category = portfolioContent.categories.find((item) => item.id === journeyId)!;
-    const closed = labels(stateOn(journeyId, { selectedJourneyStation: null }));
-    const open = labels(stateOn(journeyId, { projectIndex: 1, selectedJourneyStation: 1 }));
+  test('offers only the close control for the internship corkboard', () => {
+    const control = labels(stateOn(journeyId));
 
-    expect(closed.filter((label) => label.startsWith('查看站点'))).toHaveLength(category.journeyExperiences!.length);
-    expect(closed).not.toContain('返回旅途地图');
-    expect(open).toContain('返回旅途地图');
+    expect(control).toEqual(['关闭详情']);
+  });
+
+  test('describes the selected internship and offers a popup close control', () => {
+    const state = stateOn(journeyId, { projectIndex: 3, selectedJourneyStation: 3 });
+    const descriptor = describeScreen(portfolioContent, state);
+
+    expect(descriptor.status).toContain('京东');
+    expect(descriptor.details.join(' ')).toContain('采销');
+    expect(descriptor.controls.map(({ label }) => label)).toEqual(['关闭实习详情', '关闭详情']);
   });
 
   test('ignores a selected category that is not present in the content', () => {

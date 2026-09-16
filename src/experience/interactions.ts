@@ -10,6 +10,13 @@ export function resolveInteractionAction(userData: Record<string, unknown>, proj
       return { type: 'NEXT_PROJECT', projectCount };
     case 'previous-project':
       return { type: 'PREVIOUS_PROJECT', projectCount };
+    case 'select-project-index':
+      return typeof userData.projectIndex === 'number'
+        && Number.isInteger(userData.projectIndex)
+        && userData.projectIndex >= 0
+        && userData.projectIndex < projectCount
+        ? { type: 'SET_PROJECT_INDEX', projectIndex: userData.projectIndex }
+        : null;
     case 'close-detail':
       return { type: 'CLOSE_DETAIL' };
     case 'finish':

@@ -6,7 +6,7 @@ const measure = (text: string) => Array.from(text).length * 40;
 
 describe('education content and pagination', () => {
   test('preserves both supplied schools and removes only the confirmed duplicate award', () => {
-    expect(educationExperiences.map((entry) => entry.school)).toEqual(['天津仁爱学院', '北京体育大学（211）']);
+    expect(educationExperiences.map((entry) => entry.school)).toEqual(['北京体育大学（211）', '天津仁爱学院']);
     const content = JSON.stringify(educationExperiences);
     expect(content.match(/校长奖学金/g)).toHaveLength(1);
     for (const text of ['3.94/4', '1/94', '连续四年排名第一', '3.84/4', '5/50', '2027.7', '米兰冬奥会赛事运营']) {

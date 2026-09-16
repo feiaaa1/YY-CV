@@ -11,6 +11,14 @@ describe('experience state machine', () => {
     expect(detail.visitedCategoryIds).toEqual(['brand']);
   });
 
+  test('opens a category at its requested initial project', () => {
+    const detail = reduceExperience(createExperienceState(false), {
+      type: 'OPEN_CATEGORY', categoryId: 'ui-web', initialProjectIndex: 0,
+    });
+
+    expect(detail).toMatchObject({ screen: 'detail', selectedCategoryId: 'ui-web', projectIndex: 0 });
+  });
+
   test('cycles project indices and closes back to the directory', () => {
     let state = createExperienceState(false);
     state = reduceExperience(state, { type: 'ENTER_DIRECTORY' });

@@ -56,6 +56,7 @@ export type Category = {
   color: string;
   secondaryColor: string;
   presentation: DetailPresentation;
+  initialProjectIndex?: number;
   projects: Project[];
   scrapbookPages?: ScrapbookPage[];
   journeyExperiences?: JourneyExperience[];

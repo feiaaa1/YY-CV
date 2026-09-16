@@ -40,6 +40,8 @@ export function getCoverScale(width: number, height: number): number {
   return Math.min(0.85, 0.62 * (width / 390));
 }
 
-export function getDetailScale(width: number, height: number): number {
-  return width / height < 0.85 || width < 720 ? 0.62 : 1;
+export function getDetailScale(width: number, height: number, presentation?: string): number {
+  const isMobile = width / height < 0.85 || width < 720;
+  if (!isMobile) return 1;
+  return presentation === 'journey' ? 0.76 : 0.62;
 }

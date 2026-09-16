@@ -23,6 +23,9 @@ describe('scene interaction mapping', () => {
     expect(resolveInteractionAction({ action: 'open-category', categoryId: 'brand' }, 3)).toEqual({ type: 'OPEN_CATEGORY', categoryId: 'brand' });
     expect(resolveInteractionAction({ action: 'next-project' }, 3)).toEqual({ type: 'NEXT_PROJECT', projectCount: 3 });
     expect(resolveInteractionAction({ action: 'previous-project' }, 3)).toEqual({ type: 'PREVIOUS_PROJECT', projectCount: 3 });
+    expect(resolveInteractionAction({ action: 'select-project-index', projectIndex: 1 }, 3)).toEqual({
+      type: 'SET_PROJECT_INDEX', projectIndex: 1,
+    });
     expect(resolveInteractionAction({ action: 'close-detail' }, 3)).toEqual({ type: 'CLOSE_DETAIL' });
     expect(resolveInteractionAction({ action: 'finish' }, 3)).toEqual({ type: 'FINISH' });
     expect(resolveInteractionAction({ action: 'restart' }, 3)).toEqual({ type: 'RESTART' });
@@ -36,6 +39,7 @@ describe('scene interaction mapping', () => {
     expect(resolveInteractionAction({ action: 'open-category' }, 3)).toBeNull();
     expect(resolveInteractionAction({ action: 'something-else' }, 3)).toBeNull();
     expect(resolveInteractionAction({ action: 'select-journey-station' }, 4)).toBeNull();
+    expect(resolveInteractionAction({ action: 'select-project-index', projectIndex: 4 }, 4)).toBeNull();
   });
 
   test('pairs named canvas interaction listeners with cleanup handlers', () => {
@@ -91,5 +95,9 @@ describe('scene interaction mapping', () => {
 
     expect(activateTarget).toMatch(/target\.userData\.action === 'toggle-about-expanded'/);
     expect(activateTarget).toMatch(/this\.targetOwners\.get\(target\)\?\.actions\.toggleExpanded\(\);/);
+  });
+
+  test('uses a white scene background for the internship corkboard', () => {
+    expect(experienceSource).toMatch(/category\.presentation === 'journey'\s*\? '#FFFFFF'/);
   });
 });

@@ -6,6 +6,9 @@ import { createHandle, damp, type SculptModelHandle } from '../three/runtime';
 import { paintEducationPage } from '../education/paint';
 import { createEducationStickerLayers, hasEducationArtwork, paintEducationArtwork } from '../education/artwork';
 import { createHonorsStickerLayers, hasHonorsArtwork, paintHonorsArtwork } from '../education/honorsArtwork';
+import { createBsuStickerLayers, hasBsuArtwork, paintBsuArtwork } from '../education/bsuArtwork';
+import { createBsuRightStickerLayers, hasBsuRightArtwork, paintBsuRightArtwork } from '../education/bsuRightArtwork';
+import { createEducationBookmarkLayers } from '../education/bookmarks';
 
 type CanvasPainter = (context: CanvasRenderingContext2D, width: number, height: number) => void;
 
@@ -104,7 +107,9 @@ function makeSpreadTexture(page: ScrapbookPage, side: 'left' | 'right', flatten 
   const background = side === 'left' ? '#F1EFE5' : '#E8E3CF';
   return makeCanvasTexture(1200, 1420, background, (context, width, height) => {
     if (side === 'left' && hasEducationArtwork(page) && paintEducationArtwork(context, flatten)) return;
+    if (side === 'left' && hasBsuArtwork(page) && paintBsuArtwork(context, flatten)) return;
     if (side === 'right' && hasHonorsArtwork(page) && paintHonorsArtwork(context, flatten)) return;
+    if (side === 'right' && hasBsuRightArtwork(page) && paintBsuRightArtwork(context, flatten)) return;
     if (page.education) {
       paintEducationPage(context, page, side);
       return;
@@ -319,9 +324,10 @@ function makeRoundControl(id: string, label: string, action: string): THREE.Grou
   return group;
 }
 
-export function createScrapbookModel(category: Category, reducedMotion = false): SculptModelHandle {
+export function createScrapbookModel(category: Category, reducedMotion = false, requestedInitialIndex = 0): SculptModelHandle {
   const pages = category.scrapbookPages ?? [];
   if (!pages.length) throw new Error(`Scrapbook category ${category.id} requires at least one page.`);
+  const initialIndex = THREE.MathUtils.clamp(Math.round(requestedInitialIndex), 0, pages.length - 1);
 
   const root = new THREE.Group();
   root.name = `scrapbook-${category.id}`;
@@ -367,6 +373,10 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   leftPage.add(educationLayers.group);
   parts.set(educationLayers.group.name, educationLayers.group);
   educationLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
+  const bsuLayers = createBsuStickerLayers();
+  leftPage.add(bsuLayers.group);
+  parts.set(bsuLayers.group.name, bsuLayers.group);
+  bsuLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
   let hoveredArtworkTarget: THREE.Object3D | null = null;
 
   const rightPage = createRoundedPage('active-right-page', 4.25, 5.18, makeSpreadTexture(pages[0]!, 'right'), '#DCD7C9');
@@ -378,6 +388,10 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   rightPage.add(honorsLayers.group);
   parts.set(honorsLayers.group.name, honorsLayers.group);
   honorsLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
+  const bsuRightLayers = createBsuRightStickerLayers();
+  rightPage.add(bsuRightLayers.group);
+  parts.set(bsuRightLayers.group.name, bsuRightLayers.group);
+  bsuRightLayers.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
 
   const turningPivot = new THREE.Group();
   turningPivot.name = 'turning-page-pivot';
@@ -459,6 +473,11 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
   closeTag.position.set(4.85, -3.45, 0.16);
   root.add(closeTag); parts.set(closeTag.name, closeTag); targets.push(closeTag);
 
+  const degreeBookmarks = createEducationBookmarkLayers(pages.some((page) => Boolean(page.education)), initialIndex);
+  leftPivot.add(degreeBookmarks.group);
+  parts.set(degreeBookmarks.group.name, degreeBookmarks.group);
+  degreeBookmarks.meshes.forEach((mesh) => { parts.set(mesh.name, mesh); targets.push(mesh); });
+
   const hoverRig = new THREE.Group();
   hoverRig.name = 'book-hover-rig';
   root.add(hoverRig);
@@ -470,12 +489,17 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     const page = pages[index]!;
     hoveredArtworkTarget = null;
     educationLayers.reset();
+    bsuLayers.reset();
     honorsLayers.reset();
+    bsuRightLayers.reset();
     educationLayers.group.visible = hasEducationArtwork(page);
+    bsuLayers.group.visible = hasBsuArtwork(page);
     honorsLayers.group.visible = hasHonorsArtwork(page);
+    bsuRightLayers.group.visible = hasBsuRightArtwork(page);
     leftCollage.visible = !page.education;
     rightCollage.visible = !page.education;
     root.userData.projectIndex = index;
+    degreeBookmarks.setActive(index);
     leftPage.userData.pageId = page.id;
     rightPage.userData.pageId = page.id;
     updatePageTexture(leftPage, makeSpreadTexture(page, 'left'));
@@ -501,9 +525,15 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     });
     leftPage.userData.action = index > 0 ? 'previous-project' : undefined;
     rightPage.userData.action = index < pages.length - 1 ? 'next-project' : undefined;
+    [...educationLayers.meshes, ...bsuLayers.meshes].forEach((mesh) => {
+      mesh.userData.action = index > 0 ? 'previous-project' : 'hover-education-sticker';
+    });
+    [...honorsLayers.meshes, ...bsuRightLayers.meshes].forEach((mesh) => {
+      mesh.userData.action = index < pages.length - 1 ? 'next-project' : 'hover-honors-sticker';
+    });
   };
 
-  applyPage(0);
+  applyPage(initialIndex);
   let hovered = false;
   const handle = createHandle(root, parts, targets, {
     setHovered: (value) => { hovered = value; },
@@ -544,12 +574,19 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
       root.userData.turning = true;
       hoveredArtworkTarget = null;
       educationLayers.reset();
+      bsuLayers.reset();
       honorsLayers.reset();
+      bsuRightLayers.reset();
       educationLayers.group.visible = false;
+      bsuLayers.group.visible = false;
       honorsLayers.group.visible = false;
+      bsuRightLayers.group.visible = false;
       // While turning, print a complete flattened left sheet; restore live layers on landing.
       updatePageTexture(leftPage, makeSpreadTexture(forward ? currentPage : nextPage, 'left', true));
       turningPivot.rotation.y = forward ? -restingOpenAngle : restingOpenAngle;
+      const sourceDepth = forward ? rightPivot.position.z : leftPivot.position.z;
+      const targetDepth = forward ? leftPivot.position.z : rightPivot.position.z;
+      turningPivot.position.z = sourceDepth;
       turningPage.rotation.set(0, 0, 0);
       turningPage.position.x = forward ? 2.1 : -2.1;
       updateTurningTextures(
@@ -558,9 +595,12 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
         makeSpreadTexture(nextPage, forward ? 'left' : 'right', true),
       );
       if (forward) {
-        updatePageTexture(rightPage, makeSpreadTexture(nextPage, 'right'));
+        // Keep the uncovered destination page complete while the current leaf moves away.
+        updatePageTexture(rightPage, makeSpreadTexture(nextPage, 'right', true));
         rightPage.userData.pageId = nextPage.id;
       } else {
+        // Preserve the current right page until the returning leaf covers it.
+        updatePageTexture(rightPage, makeSpreadTexture(currentPage, 'right', true));
         updatePageTexture(leftPage, makeSpreadTexture(nextPage, 'left', true));
         leftPage.userData.pageId = nextPage.id;
       }
@@ -570,9 +610,15 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
         timeline
           .to([leftCollage.scale, rightCollage.scale], { x: 0.15, y: 0.15, z: 0.15, duration: 0.24 }, 0)
           .to(turningPage.rotation, { z: forward ? -0.025 : 0.025, duration: 0.38, yoyo: true, repeat: 1 }, 0)
+          .to(turningPivot.position, { z: 0.25, duration: 0.34, ease: 'power2.out' }, 0)
+          .to(turningPivot.position, { z: targetDepth, duration: 0.34, ease: 'power2.in' }, 0.52)
           .to(turningPivot.rotation, { y: endAngle, duration: 0.86, ease: 'power2.inOut' }, 0)
           .call(() => {
             applyPage(nextIndex);
+            if (root.userData.open) {
+              leftPivot.rotation.y = restingOpenAngle;
+              rightPivot.rotation.y = -restingOpenAngle;
+            }
             turningPage.visible = false;
             turningPivot.rotation.y = 0;
             turningPage.rotation.set(0, 0, 0);
@@ -583,9 +629,13 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     },
   }, (delta) => {
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
-    const lift = hovered && !root.userData.turning && root.userData.reducedMotion !== true ? 1 : 0;
-    educationLayers.update(hoveredArtworkTarget, Boolean(lift) && educationLayers.group.visible, delta);
-    honorsLayers.update(hoveredArtworkTarget, Boolean(lift) && honorsLayers.group.visible, delta);
+    const lift = hovered && root.userData.reducedMotion !== true ? 1 : 0;
+    const stickerLift = Boolean(lift) && !root.userData.turning;
+    educationLayers.update(hoveredArtworkTarget, stickerLift && educationLayers.group.visible, delta);
+    bsuLayers.update(hoveredArtworkTarget, stickerLift && bsuLayers.group.visible, delta);
+    honorsLayers.update(hoveredArtworkTarget, stickerLift && honorsLayers.group.visible, delta);
+    bsuRightLayers.update(hoveredArtworkTarget, stickerLift && bsuRightLayers.group.visible, delta);
+    degreeBookmarks.update(hoveredArtworkTarget, Boolean(lift) && !root.userData.turning, delta);
     hoverRig.rotation.y = damp(hoverRig.rotation.y, pointer.x * 0.14 * lift, 7, delta);
     hoverRig.rotation.x = damp(hoverRig.rotation.x, -pointer.y * 0.07 * lift, 7, delta);
     hoverRig.rotation.z = damp(hoverRig.rotation.z, pointer.x * 0.012 * lift, 7, delta);
@@ -598,9 +648,8 @@ export function createScrapbookModel(category: Category, reducedMotion = false):
     leftPivot.rotation.x = damp(leftPivot.rotation.x, lift * pointer.y * 0.018, 7, delta);
     rightPivot.rotation.x = damp(rightPivot.rotation.x, lift * pointer.y * -0.018, 7, delta);
     if (root.userData.open && !root.userData.opening && !root.userData.turning) {
-      const hoverOpenAngle = restingOpenAngle + lift * (0.07 + Math.abs(pointer.y) * 0.025);
-      leftPivot.rotation.y = damp(leftPivot.rotation.y, hoverOpenAngle, 8, delta);
-      rightPivot.rotation.y = damp(rightPivot.rotation.y, -hoverOpenAngle, 8, delta);
+      leftPivot.rotation.y = damp(leftPivot.rotation.y, restingOpenAngle, 8, delta);
+      rightPivot.rotation.y = damp(rightPivot.rotation.y, -restingOpenAngle, 8, delta);
     }
     inactiveLeaves.forEach((leaf, index) => {
       leaf.position.x = damp(leaf.position.x, inactiveLeafBaseX[index]! - lift * index * 0.025, 6, delta);
