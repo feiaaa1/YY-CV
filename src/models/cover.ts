@@ -324,6 +324,11 @@ export function createCoverModel(reducedMotion = false): SculptModelHandle {
         }, 0);
     }),
   }, (delta) => {
+    // The open/close timelines own the flap hinge, the paper pivot and the
+    // assembly. Idle hover damping has to stand down while one of them runs:
+    // both writing the same Euler every frame makes the flap flutter on the
+    // way up and snap to its final angle as the folder finishes opening.
+    if (timelines.locked) return;
     const hover = root.userData.hovered && root.userData.reducedMotion !== true ? 1 : 0;
     const pointer = root.userData.hoverPointer ?? { x: 0, y: 0 };
     const pointerX = THREE.MathUtils.clamp(Number(pointer.x) || 0, -1, 1);

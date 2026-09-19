@@ -2,6 +2,8 @@ import type { Category, PortfolioContent } from './types';
 import { aboutProfile } from './profile';
 import { educationExperiences } from './education';
 import { createEducationPages } from '../education/layout';
+import { skillPanels } from './skillWorkbench';
+import { projectShowcases } from './projectExperience';
 
 const project = (
   categoryId: string,
@@ -91,35 +93,36 @@ const categories: Category[] = [
         summary: { zh: '品牌运营、商业化合作、客户增长与渠道经营。', en: 'Brand operations, commercial partnerships, customer growth and channel management.' },
         icon: 'growth', accent: '#53664B',
       },
+      {
+        id: 'zhuanzhuan', company: { zh: '转转集团', en: 'Zhuanzhuan Group' },
+        role: { zh: '品类运营（骑行）', en: 'Category Operations (Cycling)' }, period: '2026.08 — 至今',
+        location: { zh: '深圳', en: 'Shenzhen' },
+        summary: { zh: '骑行品类全链路运营，搭建货盘、营销与 AI 提效的运营闭环。', en: 'End-to-end cycling category operations across assortment, campaigns and AI efficiency.' },
+        icon: 'growth', accent: '#C0503A',
+      },
     ],
   },
   {
     id: 'illustration',
-    title: { zh: '插画', en: 'Illustration' },
-    description: { zh: '专业技能', en: 'Professional Skills' },
-    shortTitle: 'ILLUST.',
+    title: { zh: 'AI技能', en: 'AI Skills' },
+    description: { zh: 'AI技能', en: 'AI Skills' },
+    shortTitle: 'SKILLS',
     color: '#FFEE57',
     secondaryColor: '#FF8CB6',
-    presentation: 'book',
-    projects: [
-      project('illustration', 0, '柔软城市', 'Soft City', '#70D8EE', ['CHARACTER', 'SCENE']),
-      project('illustration', 1, '植物通信', 'Botanical Signals', '#7EE181', ['BOTANICAL', 'SERIES']),
-      project('illustration', 2, '夜间电台', 'Night Radio', '#755BE8', ['STORY', 'COLOR']),
-    ],
+    presentation: 'accordion',
+    projects: [],
+    skillPanels,
   },
   {
     id: 'motion-3d',
-    title: { zh: '动态 / 3D', en: 'Motion & 3D' },
-    description: { zh: '项目作品', en: 'Selected Projects' },
-    shortTitle: 'MOTION',
+    title: { zh: '项目经历', en: 'Project Experience' },
+    description: { zh: '项目经历', en: 'Project Experience' },
+    shortTitle: 'PROJECTS',
     color: '#F5A4E7',
     secondaryColor: '#77E4F4',
-    presentation: 'ticket',
-    projects: [
-      project('motion-3d', 0, '弹性字体', 'Elastic Type', '#E8FF68', ['MOTION', 'TYPE']),
-      project('motion-3d', 1, '纸张实验室', 'Paper Lab', '#FF755B', ['THREE.JS', 'MATERIAL']),
-      project('motion-3d', 2, '漂浮档案', 'Floating Archive', '#5E82F4', ['3D', 'INTERACTION']),
-    ],
+    presentation: 'projects',
+    projects: [],
+    projectShowcases,
   },
 ];
 

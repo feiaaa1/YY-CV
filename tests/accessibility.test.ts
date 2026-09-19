@@ -5,7 +5,8 @@ import { createExperienceState, reduceExperience, type ExperienceState } from '.
 
 const scrapbookId = 'ui-web';
 const journeyId = 'poster-editorial';
-const bookId = 'illustration';
+const projectsId = 'motion-3d';
+const accordionId = 'illustration';
 const aboutId = 'brand';
 
 function stateOn(categoryId: string, overrides: Partial<ExperienceState> = {}): ExperienceState {
@@ -34,15 +35,14 @@ describe('screen semantics', () => {
     expect(descriptor.controls.map((control) => control.action.type)).toEqual(['RESTART']);
   });
 
-  test('describes the visible project rather than only its index', () => {
-    const state = stateOn(bookId, { projectIndex: 1 });
-    const category = portfolioContent.categories.find((item) => item.id === bookId)!;
-    const project = category.projects[1]!;
-    const details = describeScreen(portfolioContent, state).details.join(' ');
+  test('describes every card of the project deck rather than only an index', () => {
+    const category = portfolioContent.categories.find((item) => item.id === projectsId)!;
+    const showcase = category.projectShowcases![1]!;
+    const details = describeScreen(portfolioContent, stateOn(projectsId)).details.join(' ');
 
-    expect(details).toContain(project.title.zh);
-    expect(details).toContain(project.summary.zh);
-    expect(details).toContain(project.year);
+    expect(details).toContain(showcase.title.zh);
+    expect(details).toContain(showcase.summary.zh);
+    expect(details).toContain(showcase.year);
   });
 
   test('describes the internship corkboard without the removed station content', () => {
@@ -68,13 +68,23 @@ describe('screen semantics', () => {
     expect(control).toEqual(['本科', '硕士', '关闭详情']);
   });
 
-  test('keeps both paging controls for cyclic book and ticket presentations', () => {
-    for (const index of [0, 2]) {
-      const control = labels(stateOn(bookId, { projectIndex: index }));
+  test('keeps the scroll-driven project deck free of paging controls', () => {
+    const control = labels(stateOn(projectsId, { projectIndex: 2 }));
 
-      expect(control).toContain('上一个项目');
-      expect(control).toContain('下一个项目');
+    expect(control).not.toContain('上一个项目');
+    expect(control).not.toContain('下一个项目');
+    expect(control).toEqual(['关闭详情']);
+  });
+
+  test('lists the skill panels and keeps the accordion free of paging controls', () => {
+    const category = portfolioContent.categories.find((item) => item.id === accordionId)!;
+    const descriptor = describeScreen(portfolioContent, stateOn(accordionId));
+
+    expect(descriptor.details[0]).toBe(`${category.title.zh} / ${category.title.en}`);
+    for (const panel of category.skillPanels!) {
+      expect(descriptor.details.join(' ')).toContain(panel.title.zh);
     }
+    expect(descriptor.controls.map((control) => control.action.type)).toEqual(['CLOSE_DETAIL']);
   });
 
   test('offers no paging controls for the about presentation', () => {
@@ -101,7 +111,7 @@ describe('screen semantics', () => {
   });
 
   test('ignores a selected category that is not present in the content', () => {
-    const state = { ...stateOn(bookId), selectedCategoryId: 'missing-category' };
+    const state = { ...stateOn(projectsId), selectedCategoryId: 'missing-category' };
     const descriptor = describeScreen(portfolioContent, state);
 
     expect(descriptor.controls.map((control) => control.label)).toContain('关闭详情');

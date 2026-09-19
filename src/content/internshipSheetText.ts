@@ -343,6 +343,63 @@ export const sheetTextPages: Record<string, SheetTextPage> = {
     ],
     footer: { text: 'INTERNSHIP JOURNAL   /   04', top: 1378, left: 117 },
   }),
+  zhuanzhuan: createSheetPage({
+    company: '转转集团',
+    role: '品类运营（骑行）',
+    period: '2026.08   -   至今',
+    /**
+     * 转转 carries six sections, one more than 京东, so its body type and the
+     * gap between headings are both one step tighter: every block still holds
+     * the two or three lines it needs without reaching the heading below it.
+     */
+    bodyType: { size: 20, lineHeight: 31 },
+    tagline: { text: 'RIDE  THE  GROWTH  LOOP', top: 508, right: 973 },
+    sections: [
+      {
+        heading: '项目概述',
+        headingTop: 544,
+        bodyTop: 578,
+        left: 118,
+        body: '负责转转骑行品类全链路运营，构建“货盘筛选→品类营销→AI提效”商业运营闭环，带动品类GMV提升21%、转化率提升12%。',
+      },
+      {
+        heading: '货盘运营',
+        headingTop: 680,
+        bodyTop: 714,
+        left: 118,
+        body: '基于价格/销量/库存/热度建立“前30%低价×热卖车型”筛选机制，通过周环比锁定高转化价格带与车型，核心货盘曝光占比从7%提升至12%。',
+      },
+      {
+        heading: '品类营销',
+        headingTop: 816,
+        bodyTop: 850,
+        left: 118,
+        body: '策划“开学骑行季”“喜德盛品牌周”等10场活动，主导分层选品、会场搭建与Push/Feed承接；累计曝光13万+、访问3万+。',
+      },
+      {
+        heading: '产品运营',
+        headingTop: 952,
+        bodyTop: 986,
+        left: 118,
+        body: '梳理骑行配件筛选体系并推动字段标准化，独立输出区间筛选PRD并跟进落地，商品点击率提升15%。',
+      },
+      {
+        heading: '用户增长',
+        headingTop: 1088,
+        bodyTop: 1122,
+        left: 118,
+        body: '从0到1策划“晨骑深圳湾”等xx场线下活动，累计4场触达500+用户，新增到店100+，单日最高成交额达xx元。',
+      },
+      {
+        heading: 'AI提效',
+        headingTop: 1224,
+        bodyTop: 1258,
+        left: 118,
+        body: '搭建AI工作台与BI数据看板，训练Skills批量产出xx条素材，周期24h→2h（提效92%），沉淀xx个Prompt与xx类视觉模板。',
+      },
+    ],
+    footer: { text: 'INTERNSHIP JOURNAL   /   05', top: 1378, left: 117 },
+  }),
 };
 
 export function findSheetTextPage(stationId: string): SheetTextPage | undefined {

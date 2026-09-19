@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { gsap } from 'gsap';
 import { createTimelineController, type TimelineController } from '../animation/timelines';
 import type { Category, PortfolioContent } from '../content/types';
+import { projectShowcaseAssetUrls } from '../content/projectExperience';
 import { COVER_RIGHT_CAPTION_X, coverTitleStickerUrl, createCoverModel } from '../models/cover';
 import {
   createDirectoryFolderModel,
@@ -90,7 +91,9 @@ type PointerSnapshot = {
 
 type PopupPan = { x: number; y: number };
 
-const LOADING_LABEL_COPY = '网页加载中';
+const LOADING_LABEL_COPY = '正在加载一个还挺能折腾的人';
+const LOADING_LABEL_TILDE = '~';
+const LOADING_LABEL_SUBTITLE = 'Loading someone who’s always up to something.';
 const LOADING_LABEL_DOT_COUNT = 3;
 
 export type ScreenModelRegistry = {
@@ -211,6 +214,8 @@ export class PortfolioExperience {
   private keyLight!: THREE.DirectionalLight;
   private detailHandle: SculptModelHandle | null = null;
   private aboutPage: { dispose: () => void } | null = null;
+  private skillsPage: { dispose: () => void } | null = null;
+  private projectsPage: { dispose: () => void } | null = null;
   private state: ExperienceState;
   private hoveredHandle: SculptModelHandle | null = null;
   private finishTagHovered = false;
@@ -266,7 +271,10 @@ export class PortfolioExperience {
     this.loadingOverlay.dataset.visible = 'true';
     this.loadingOverlay.setAttribute('role', 'status');
     this.loadingOverlay.setAttribute('aria-live', 'polite');
-    this.loadingOverlay.setAttribute('aria-label', '正在加载完整体验');
+    this.loadingOverlay.setAttribute(
+      'aria-label',
+      `${LOADING_LABEL_COPY}${LOADING_LABEL_TILDE} ${LOADING_LABEL_SUBTITLE}`,
+    );
     let loadingGraphic = this.loadingOverlay.querySelector<SVGSVGElement>('.pl');
     if (!loadingGraphic) {
       const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -302,11 +310,18 @@ export class PortfolioExperience {
       loadingLabel = document.createElement('p');
       loadingLabel.className = 'scene-loader__label';
       loadingLabel.setAttribute('aria-hidden', 'true');
+      const loadingLabelLine = document.createElement('span');
+      loadingLabelLine.className = 'scene-loader__label-line';
       const loadingLabelText = document.createElement('span');
       loadingLabelText.className = 'scene-loader__label-text';
       loadingLabelText.dataset.text = LOADING_LABEL_COPY;
       loadingLabelText.textContent = LOADING_LABEL_COPY;
-      loadingLabel.append(loadingLabelText);
+      loadingLabelLine.append(loadingLabelText);
+      const loadingLabelTilde = document.createElement('span');
+      loadingLabelTilde.className = 'scene-loader__label-tilde';
+      loadingLabelTilde.setAttribute('aria-hidden', 'true');
+      loadingLabelTilde.textContent = LOADING_LABEL_TILDE;
+      loadingLabelLine.append(loadingLabelTilde);
       const dots = document.createElement('span');
       dots.className = 'scene-loader__label-dots';
       for (let index = 0; index < LOADING_LABEL_DOT_COUNT; index += 1) {
@@ -314,7 +329,12 @@ export class PortfolioExperience {
         dot.className = 'scene-loader__label-dot';
         dots.append(dot);
       }
-      loadingLabel.append(dots);
+      loadingLabelLine.append(dots);
+      const loadingLabelSubtitle = document.createElement('span');
+      loadingLabelSubtitle.className = 'scene-loader__label-subtitle';
+      loadingLabelSubtitle.dataset.text = LOADING_LABEL_SUBTITLE;
+      loadingLabelSubtitle.textContent = LOADING_LABEL_SUBTITLE;
+      loadingLabel.append(loadingLabelLine, loadingLabelSubtitle);
     }
     if (!initialLoader) {
       this.loadingOverlay.append(loadingGraphic, loadingLabel);
@@ -521,7 +541,7 @@ export class PortfolioExperience {
       this.dragDistance = Math.hypot(dx, dy);
       this.updatePointer(event);
       const isPageableDetail = this.state.screen === 'detail'
-        && !['about', 'journey'].includes(this.currentCategory()?.presentation ?? '');
+        && !['about', 'journey', 'projects'].includes(this.currentCategory()?.presentation ?? '');
       if (isPageableDetail && isHorizontalSwipe({ dx, dy })) {
         this.dispatch({ type: dx < 0 ? 'NEXT_PROJECT' : 'PREVIOUS_PROJECT', projectCount: this.currentProjectCount() });
       } else if (this.dragDistance < 12) {
@@ -564,10 +584,10 @@ export class PortfolioExperience {
         ? { type: 'CLOSE_JOURNEY_POPUP' }
         : { type: 'CLOSE_DETAIL' });
     }
-    if (event.key === 'ArrowRight' && this.state.screen === 'detail' && !['about', 'journey'].includes(presentation ?? '')) {
+    if (event.key === 'ArrowRight' && this.state.screen === 'detail' && !['about', 'journey', 'accordion', 'projects'].includes(presentation ?? '')) {
       this.dispatch({ type: 'NEXT_PROJECT', projectCount: this.currentProjectCount() });
     }
-    if (event.key === 'ArrowLeft' && this.state.screen === 'detail' && !['about', 'journey'].includes(presentation ?? '')) {
+    if (event.key === 'ArrowLeft' && this.state.screen === 'detail' && !['about', 'journey', 'accordion', 'projects'].includes(presentation ?? '')) {
       this.dispatch({ type: 'PREVIOUS_PROJECT', projectCount: this.currentProjectCount() });
     }
     if (event.key === 'Enter' && this.state.screen === 'cover') this.dispatch({ type: 'ENTER_DIRECTORY' });
@@ -678,12 +698,12 @@ export class PortfolioExperience {
 
   private async initializeExperience(): Promise<void> {
     try {
-      const [aboutModule, journeyModule, scrapbookModule, bookModule, ticketModule] = await Promise.all([
+      const [aboutModule, journeyModule, scrapbookModule, ticketModule, skillsModule] = await Promise.all([
         import('../about/aboutProfilePage'),
         import('../models/journey'),
         import('../models/scrapbook'),
-        import('../models/book'),
         import('../models/ticket'),
+        import('../skills/skillsWorkbenchPage'),
       ]);
       const assets = [
         coverTitleStickerUrl,
@@ -696,6 +716,8 @@ export class PortfolioExperience {
         ...educationBookmarkAssetUrls,
         ...aboutModule.aboutProfileAssetUrls,
         ...journeyModule.journeyAssetUrls,
+        ...skillsModule.skillWorkbenchAssetUrls,
+        ...projectShowcaseAssetUrls,
       ];
       const failed = await preloadImageAssets(assets, undefined, 'high');
 
@@ -705,6 +727,7 @@ export class PortfolioExperience {
         loadBsuArtwork(),
         loadBsuRightArtwork(),
         loadEducationBookmarks(),
+        skillsModule.preloadSkillsWorkbenchAssets(),
       ]);
       await this.ensureDirectoryReady();
       await this.warmDirectoryRendering();
@@ -718,8 +741,6 @@ export class PortfolioExperience {
           );
         } else if (category.presentation === 'journey') {
           prepared = journeyModule.createJourneyModel(category, this.state.reducedMotion);
-        } else if (category.presentation === 'book') {
-          prepared = bookModule.createOpenBookModel(category, 0, this.state.reducedMotion);
         } else if (category.presentation === 'ticket') {
           prepared = ticketModule.createTicketStackModel(category, 0, this.state.reducedMotion);
         }
@@ -846,7 +867,9 @@ export class PortfolioExperience {
 
     if (action.type === 'NEXT_PROJECT' || action.type === 'PREVIOUS_PROJECT') {
       const category = this.currentCategory();
-      if (!category || category.presentation === 'journey') return;
+      // The internship board and the skills accordion drive their own detail
+      // navigation, so paging the project index here would move nothing.
+      if (!category || ['journey', 'accordion'].includes(category.presentation)) return;
       const count = this.currentProjectCount();
       if (category.presentation === 'scrapbook') {
         if (action.type === 'NEXT_PROJECT' && this.state.projectIndex >= count - 1) return;
@@ -992,12 +1015,35 @@ export class PortfolioExperience {
         ? '#414D6A'
         : category.presentation === 'journey'
           ? '#FFFFFF'
-        : category.presentation === 'book' ? '#C91F58' : '#A75EDF');
+          : category.presentation === 'accordion'
+            ? '#E2D6F6'
+            : category.presentation === 'projects'
+              ? '#F2EEFC'
+            : category.presentation === 'book' ? '#C91F58' : '#A75EDF');
     let wasPrepared = false;
     switch (category.presentation) {
       case 'about': {
         const { mountAboutProfilePage } = await import('../about/aboutProfilePage');
         this.aboutPage = mountAboutProfilePage(this.container, {
+          reducedMotion: this.state.reducedMotion,
+          onClose: () => { void this.dispatch({ type: 'CLOSE_DETAIL' }); },
+        });
+        return;
+      }
+      case 'accordion': {
+        const { mountSkillsWorkbenchPage, preloadSkillsWorkbenchAssets } = await import('../skills/skillsWorkbenchPage');
+        const failed = await preloadSkillsWorkbenchAssets();
+        if (failed.length > 0) console.warn('Some skill artwork could not be preloaded:', failed);
+        if (this.destroyed) return;
+        this.skillsPage = mountSkillsWorkbenchPage(this.container, {
+          reducedMotion: this.state.reducedMotion,
+          onClose: () => { void this.dispatch({ type: 'CLOSE_DETAIL' }); },
+        });
+        return;
+      }
+      case 'projects': {
+        const { mountProjectsPage } = await import('../projects/projectsPage');
+        this.projectsPage = mountProjectsPage(this.container, category, {
           reducedMotion: this.state.reducedMotion,
           onClose: () => { void this.dispatch({ type: 'CLOSE_DETAIL' }); },
         });
@@ -1021,6 +1067,7 @@ export class PortfolioExperience {
         this.detailHandle.actions.setReducedMotion(this.state.reducedMotion);
         break;
       }
+      // Kept so another category can still opt into the book presentation.
       case 'book': {
         const { createOpenBookModel } = await import('../models/book');
         this.detailHandle = this.preparedDetailHandles.get(category.id)
@@ -1092,6 +1139,10 @@ export class PortfolioExperience {
     this.clearSheetText();
     this.aboutPage?.dispose();
     this.aboutPage = null;
+    this.skillsPage?.dispose();
+    this.skillsPage = null;
+    this.projectsPage?.dispose();
+    this.projectsPage = null;
     if (!this.detailHandle) return;
     this.unregisterHandle(this.detailHandle);
     this.detailHandle.dispose();
@@ -1567,6 +1618,10 @@ export class PortfolioExperience {
     this.directoryEntrance.killActiveTimeline();
     this.aboutPage?.dispose();
     this.aboutPage = null;
+    this.skillsPage?.dispose();
+    this.skillsPage = null;
+    this.projectsPage?.dispose();
+    this.projectsPage = null;
     for (const handle of this.modelHandles) handle.dispose();
     for (const handle of this.preparedDetailHandles.values()) handle.dispose();
     this.preparedDetailHandles.clear();

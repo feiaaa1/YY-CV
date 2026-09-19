@@ -12,7 +12,7 @@ const stations = portfolioContent.categories.find((category) => category.id === 
 
 describe('vector internship sheets', () => {
   test('ships every internship sheet as the shared text-free plate plus real text', () => {
-    expect(stations.map((station) => station.id)).toEqual(['migu', 'youdao', 'kuaishou', 'jd']);
+    expect(stations.map((station) => station.id)).toEqual(['migu', 'youdao', 'kuaishou', 'jd', 'zhuanzhuan']);
     for (const station of stations) {
       const page = findSheetTextPage(station.id);
       // The stations all reuse 咪咕's clean plate instead of generating one each.

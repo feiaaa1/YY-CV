@@ -62,7 +62,9 @@ export function normalizeWheelDelta(deltaY: number, deltaMode: number, pageHeigh
 }
 
 export function isPageablePresentation(presentation: string | undefined): boolean {
-  return !['about', 'journey'].includes(presentation ?? '');
+  // The skills accordion is a DOM page: it owns its own hover, tap and scroll
+  // handling, so the 3D gesture gate must not page it.
+  return !['about', 'journey', 'accordion', 'projects'].includes(presentation ?? '');
 }
 
 export type WheelGestureGateOptions = {
