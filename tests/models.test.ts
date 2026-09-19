@@ -556,7 +556,7 @@ describe('procedural model contracts', () => {
   });
 
   test('book closes the entire composition, not only its page pivots', async () => {
-    const book = createOpenBookModel(portfolioContent.categories[3]!, 0, true);
+    const book = createOpenBookModel(portfolioContent.categories[0]!, 0, true);
     book.root.scale.setScalar(1);
     await book.actions.close();
     expect(book.root.scale.x).toBeCloseTo(0.02);
@@ -566,7 +566,7 @@ describe('procedural model contracts', () => {
   });
 
   test('book turns one physical leaf with independent front and back project content', async () => {
-    const category = portfolioContent.categories[3]!;
+    const category = portfolioContent.categories[0]!;
     const book = createOpenBookModel(category, 0, true);
     const turningPage = book.parts.get('turning-page')!;
     const body = book.parts.get('turning-page-body') as THREE.Mesh;
@@ -897,7 +897,8 @@ describe('procedural model contracts', () => {
       'board-back', 'corkboard-background', 'lined-paper', 'torn-paper', 'calendar',
       'photo-stack', 'flower-decoration', 'heart-decoration', 'keychain-decoration',
       'internship-label-migu', 'internship-label-youdao',
-      'internship-label-kuaishou', 'internship-label-jd', 'close-tag',
+      'internship-label-kuaishou', 'internship-label-jd',
+      'internship-label-zhuanzhuan', 'close-tag',
     ]));
     expect(journey.interactiveTargets.some((target) => target.userData.action === 'journey-hover-surface')).toBe(true);
     const pageBackground = journey.parts.get('internship-page-background') as THREE.Mesh<THREE.PlaneGeometry>;
@@ -921,23 +922,56 @@ describe('procedural model contracts', () => {
       journey.parts.get('internship-label-youdao'),
       journey.parts.get('internship-label-kuaishou'),
       jdLabel,
+      journey.parts.get('internship-label-zhuanzhuan'),
     ]));
-    [miguLabel, journey.parts.get('internship-label-youdao'), journey.parts.get('internship-label-kuaishou'), jdLabel]
+    const stationIds = portfolioContent.categories[2]!.journeyExperiences!.map(({ id }) => id);
+    stationIds
+      .map((id) => journey.parts.get(`internship-label-${id}`))
       .forEach((label, stationIndex) => {
         expect(label?.userData).toMatchObject({ action: 'select-journey-station', stationIndex });
       });
-    const labels = ['migu', 'youdao', 'kuaishou', 'jd']
+    const labels = stationIds
       .map((id) => journey.parts.get(`internship-label-${id}`) as THREE.Mesh<THREE.PlaneGeometry>);
-    expect(labels.every((label) => label.geometry.parameters.width >= 2.37)).toBe(true);
+    expect(labels.every((label) => label.geometry.parameters.width >= 2.24)).toBe(true);
     expect(labels.every((label) => label.geometry.parameters.width <= 2.58)).toBe(true);
     expect(labels.some((label) => label.rotation.z < -0.08)).toBe(true);
     expect(labels.some((label) => label.rotation.z > 0.08)).toBe(true);
-    for (let index = 1; index < labels.length; index += 1) {
-      const previous = labels[index - 1]!;
+    // The notes ring the cork instead of heaping up in the middle of it: each
+    // one overlaps the next note in the ring and the newest wraps back to the
+    // first, but every note keeps most of its paper to itself so the company
+    // names and dates stay readable.
+    for (let index = 0; index < labels.length; index += 1) {
       const current = labels[index]!;
-      const combinedHalfWidth = (previous.geometry.parameters.width + current.geometry.parameters.width) / 2;
-      expect(previous.position.distanceTo(current.position)).toBeLessThan(combinedHalfWidth);
+      const next = labels[(index + 1) % labels.length]!;
+      const combinedHalfWidth = (current.geometry.parameters.width + next.geometry.parameters.width) / 2;
+      const gaps = current.position.distanceTo(next.position);
+      expect(gaps).toBeLessThan(combinedHalfWidth);
+      expect(gaps).toBeGreaterThan(combinedHalfWidth * 0.8);
     }
+    // Spread, not stacked: the five centres sit on a ring around the middle of
+    // the board rather than hugging one diagonal.
+    const centre = labels
+      .reduce((sum, label) => sum.add(label.position), new THREE.Vector3())
+      .divideScalar(labels.length);
+    expect(Math.abs(centre.x)).toBeLessThan(0.3);
+    expect(Math.abs(centre.y)).toBeLessThan(0.3);
+    labels.forEach((label) => {
+      const radius = Math.hypot(label.position.x - centre.x, label.position.y - centre.y);
+      expect(radius).toBeGreaterThan(1.5);
+      expect(radius).toBeLessThan(2.2);
+    });
+    // Every note lands on the cork: the frame's inner edge is about 3.3 world
+    // units from the centre, and the artwork only keeps a hair of transparent
+    // margin around the paper.
+    labels.forEach((label) => {
+      const halfWidth = label.geometry.parameters.width / 2;
+      const halfHeight = label.geometry.parameters.height / 2;
+      const rotation = label.rotation.z;
+      const extentX = halfWidth * Math.abs(Math.cos(rotation)) + halfHeight * Math.abs(Math.sin(rotation));
+      const extentY = halfWidth * Math.abs(Math.sin(rotation)) + halfHeight * Math.abs(Math.cos(rotation));
+      expect(Math.abs(label.position.x) + extentX).toBeLessThanOrEqual(3.32);
+      expect(Math.abs(label.position.y) + extentY).toBeLessThanOrEqual(3.32);
+    });
     journey.dispose();
   });
 
@@ -946,7 +980,7 @@ describe('procedural model contracts', () => {
     journey.root.userData.popupScale = 1.2;
     const popup = journey.parts.get('internship-detail-popup')!;
     const backdrop = journey.parts.get('internship-detail-backdrop') as THREE.Mesh;
-    const details = ['migu', 'youdao', 'kuaishou', 'jd'];
+    const details = portfolioContent.categories[2]!.journeyExperiences!.map(({ id }) => id);
 
     expect(popup.visible).toBe(false);
     expect(backdrop.userData.action).toBe('close-journey-popup');
@@ -992,9 +1026,54 @@ describe('procedural model contracts', () => {
     const thanks = createThankYouModel({ zh: '感谢观看', en: 'THANK YOU' }, 'hello@example.com');
     expect(thanks.interactiveTargets.some((target) => target.userData.action === 'restart')).toBe(true);
     expect([...thanks.parts.keys()]).toEqual(expect.arrayContaining([
-      'thank-you-title', 'year-script', 'rear-paper', 'front-paper',
+      'thank-you-title', 'rear-paper', 'front-paper',
       'message-carrier', 'contact-line', 'bottom-rail', 'restart-tab',
     ]));
+    // The wordmark carries the page on its own; the white year line that used
+    // to sit under it is gone.
+    expect(thanks.parts.has('year-script')).toBe(false);
+    thanks.dispose();
+  });
+
+  test('closing sheets meet the yellow rail instead of floating above it', async () => {
+    const thanks = createThankYouModel({ zh: '感谢观看', en: 'THANK YOU' }, 'hello@example.com', true);
+    await thanks.actions.open();
+    const front = thanks.parts.get('front-paper') as THREE.Mesh;
+    const rear = thanks.parts.get('rear-paper') as THREE.Mesh;
+    const rail = thanks.parts.get('bottom-rail') as THREE.Mesh;
+
+    // A sheet's corners, in the model's own space. The rear sheet leans, so its
+    // corners sit at different heights and each one has to be checked on its
+    // own.
+    const corner = (paper: THREE.Mesh, side: -1 | 1, end: -1 | 1): THREE.Vector3 => {
+      const { width, height } = (paper.geometry as THREE.BoxGeometry).parameters;
+      return paper.localToWorld(new THREE.Vector3((side * width) / 2, (end * height) / 2, 0));
+    };
+    const bottomEdge = (paper: THREE.Mesh): THREE.Vector3[] => [
+      corner(paper, -1, -1),
+      corner(paper, 1, -1),
+    ];
+
+    for (const layout of [
+      { isMobile: false, halfWidth: 6.5, halfHeight: 4.06 },
+      { isMobile: true, halfWidth: 3.4, halfHeight: 7.38 },
+    ]) {
+      thanks.actions.setLayout(layout);
+      thanks.root.updateMatrixWorld(true);
+      const band = new THREE.Box3().setFromObject(rail);
+      for (const paper of [front, rear]) {
+        for (const corner of bottomEdge(paper)) {
+          // No sheet may poke out below the block, and every corner has to sink
+          // far enough that the rail hides where the paper stops.
+          expect(corner.y).toBeGreaterThanOrEqual(band.min.y);
+          expect(corner.y).toBeLessThanOrEqual(band.max.y);
+        }
+      }
+      // The rear sheet's head tips left, so its top edge sits further left than
+      // its bottom edge.
+      expect(corner(rear, -1, 1).x).toBeLessThan(corner(rear, -1, -1).x);
+      expect(corner(rear, 1, 1).x).toBeLessThan(corner(rear, 1, -1).x);
+    }
     thanks.dispose();
   });
 });

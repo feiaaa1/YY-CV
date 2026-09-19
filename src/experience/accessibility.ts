@@ -19,11 +19,13 @@ export function countProjects(category: Category | undefined): number {
   if (category.presentation === 'about') return 1;
   if (category.presentation === 'scrapbook') return category.scrapbookPages?.length ?? 1;
   if (category.presentation === 'journey') return category.journeyExperiences?.length ?? 1;
+  if (category.presentation === 'accordion') return category.skillPanels?.length ?? 1;
+  if (category.presentation === 'projects') return category.projectShowcases?.length ?? 1;
   return category.projects.length;
 }
 
 function isPageable(category: Category | undefined): boolean {
-  return category !== undefined && !['about', 'journey'].includes(category.presentation);
+  return category !== undefined && !['about', 'journey', 'accordion', 'projects'].includes(category.presentation);
 }
 
 function describeCover(content: PortfolioContent): ScreenDescriptor {
@@ -58,7 +60,10 @@ function describeJourneyDetail(category: Category, state: ExperienceState): Omit
     status: selected ? `正在浏览${selected.company.zh}实习详情。` : '正在浏览实习作品软木板。',
     details: selected
       ? [`${selected.company.zh} / ${selected.company.en}`, `${selected.role.zh}，${selected.period}`, selected.summary.zh]
-      : [`${category.title.zh} / ${category.title.en}`, '软木板上陈列咪咕、网易有道、快手与京东实习便签。'],
+      : [
+        `${category.title.zh} / ${category.title.en}`,
+        `软木板上陈列${(category.journeyExperiences ?? []).map(({ company }) => company.zh).join('、')}实习便签。`,
+      ],
     controls: selected
       ? [{ label: '关闭实习详情', action: { type: 'CLOSE_JOURNEY_POPUP' } }]
       : [],
@@ -136,6 +141,38 @@ function describeAboutDetail(content: PortfolioContent, category: Category): Omi
   };
 }
 
+/**
+ * The accordion prints its own copy, so the screen reader layer only has to
+ * name the section and list the projects it can be paged through.
+ */
+function describeAccordionDetail(category: Category): Omit<ScreenDescriptor, 'heading'> {
+  const panels = category.skillPanels ?? [];
+  return {
+    status: `正在浏览${category.title.zh}，共 ${panels.length} 个项目。把指针移到面板上可以展开查看完整内容。`,
+    details: [
+      `${category.title.zh} / ${category.title.en}`,
+      ...panels.map((panel) => `${panel.code} ${panel.title.zh} / ${panel.title.en}：${panel.tagline.zh}`),
+    ],
+    controls: [],
+  };
+}
+
+/**
+ * The deck prints its own copy too, so the screen reader layer names the folder
+ * and reads out every card the reader can scroll through.
+ */
+function describeProjectsDetail(category: Category): Omit<ScreenDescriptor, 'heading'> {
+  const showcases = category.projectShowcases ?? [];
+  return {
+    status: `正在浏览${category.title.zh}，共 ${showcases.length} 个项目。向下滚动逐个查看。`,
+    details: [
+      `${category.title.zh} / ${category.title.en}`,
+      ...showcases.map((item) => `${item.code} ${item.title.zh} / ${item.title.en} · ${item.year}：${item.summary.zh}`),
+    ],
+    controls: [],
+  };
+}
+
 function describeDetail(content: PortfolioContent, state: ExperienceState): ScreenDescriptor {
   const category = findCategory(content, state.selectedCategoryId);
 
@@ -154,7 +191,11 @@ function describeDetail(content: PortfolioContent, state: ExperienceState): Scre
       ? describeJourneyDetail(category, state)
       : category.presentation === 'scrapbook'
         ? describeScrapbookDetail(category, state)
-        : describeProjectDetail(category, state);
+        : category.presentation === 'accordion'
+          ? describeAccordionDetail(category)
+          : category.presentation === 'projects'
+            ? describeProjectsDetail(category)
+            : describeProjectDetail(category, state);
 
   return {
     heading: `${category.title.zh} / ${category.title.en}`,

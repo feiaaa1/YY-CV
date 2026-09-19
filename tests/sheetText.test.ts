@@ -12,7 +12,7 @@ const stations = portfolioContent.categories.find((category) => category.id === 
 
 describe('vector internship sheets', () => {
   test('ships every internship sheet as the shared text-free plate plus real text', () => {
-    expect(stations.map((station) => station.id)).toEqual(['migu', 'youdao', 'kuaishou', 'jd']);
+    expect(stations.map((station) => station.id)).toEqual(['migu', 'youdao', 'kuaishou', 'jd', 'zhuanzhuan']);
     for (const station of stations) {
       const page = findSheetTextPage(station.id);
       // The stations all reuse 咪咕's clean plate instead of generating one each.
@@ -81,6 +81,26 @@ describe('vector internship sheets', () => {
         const next = headings[index + 1];
         if (next) expect(body.top).toBeLessThan(next.top);
       });
+    }
+  });
+
+  test('fills the Zhuanzhuan sheet with the final numbers instead of placeholders', () => {
+    const page = findSheetTextPage('zhuanzhuan')!;
+    const copy = page.blocks.map((block) => block.text).join('\n');
+
+    expect(copy).toContain('构建“货盘筛选→品类营销→AI提效”商业运营闭环，带动品类GMV提升21%、转化率提升12%');
+    expect(copy).toContain('核心货盘曝光占比从7%提升至12%');
+    expect(copy).toContain('累计曝光13万+、访问3万+');
+    expect(copy).toContain('商品点击率提升15%');
+    expect(copy).toContain('从0到1策划“晨骑深圳湾”等5场线下活动');
+    expect(copy).toContain('新增到店100+，单日最高成交额达10万元');
+    expect(copy).toContain('批量产出50+条素材，周期24h→2h（提效92%）');
+    expect(copy).toContain('沉淀5个Prompt与6类视觉模板');
+
+    // No sheet ships with an unfilled "xx" placeholder.
+    for (const station of stations) {
+      const sheet = findSheetTextPage(station.id)!;
+      expect(sheet.blocks.some((block) => block.text.includes('xx'))).toBe(false);
     }
   });
 });

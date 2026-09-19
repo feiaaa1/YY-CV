@@ -175,8 +175,9 @@ canvas {
 
 .scene-loader__label {
   display: inline-flex;
-  align-items: flex-end;
-  gap: 0.14em;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.42em;
   margin: 1.5em 0 0;
   font-family: "Yuanti SC", YouYuan, "HanziPen SC", "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: clamp(20px, 1.6vw + 14px, 30px);
@@ -185,10 +186,32 @@ canvas {
   line-height: 1.15;
   white-space: nowrap;
   color: #000;
+  text-align: center;
+}
+
+.scene-loader__label-line {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.14em;
 }
 
 .scene-loader__label-text {
   color: #000;
+}
+
+/* The ASCII tilde sits near cap height; drop it to the middle of the Chinese
+   glyphs so it reads as one centred wave. */
+.scene-loader__label-tilde {
+  display: inline-block;
+  transform: translateY(0.4em);
+}
+
+.scene-loader__label-subtitle {
+  font-family: "Avenir Next", "Segoe UI", Inter, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.56em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
 }
 
 .scene-loader__label-dots {
@@ -212,6 +235,10 @@ canvas {
 @keyframes loaderLabelDot {
   0%, 100% { opacity: 0.35; transform: translateY(0); }
   50% { opacity: 1; transform: translateY(-0.16em); }
+}
+
+@media (max-width: 420px) {
+  .scene-loader__label { font-size: 17px; }
 }
 
 @keyframes ringA {
@@ -534,6 +561,2159 @@ canvas {
   }
 
   .about-profile__close {
+    transition: none;
+  }
+}
+
+/*
+ * Fifth folder: a scroll-driven deck of editorial project cards. The masthead
+ * stays put while each card hands over to the next one: the upper card lifts,
+ * shrinks and fades as the card below rises into its place. GSAP writes those
+ * transforms; the layout below only decides where each screen lives. Narrow
+ * screens stack the card on top of its aside, wide screens put them side by
+ * side and alternate which edge the card hugs.
+ */
+.projects-page {
+  --gutter: clamp(14px, 4.5vw, 26px);
+  --stack-top: max(88px, calc((100dvh - var(--card-h)) / 2 - 8px));
+  --footer-space: max(82px, calc(env(safe-area-inset-bottom) + 58px));
+  --card-ratio-number: 1;
+  --card-ratio: 1 / 1;
+  --card-h: 360px;
+  --card-w-limit: calc(var(--card-h) * var(--card-ratio-number));
+  --dwell: 340px;
+  --stack-h: var(--card-h);
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  color: #221a2e;
+  background:
+    radial-gradient(70% 55% at 10% 3%, #f9f5ff 0%, rgb(249 245 255 / 0%) 62%),
+    radial-gradient(58% 50% at 94% 24%, #ebe1fd 0%, rgb(235 225 253 / 0%) 58%),
+    radial-gradient(80% 55% at 50% 104%, #e3daf7 0%, rgb(227 218 247 / 0%) 62%),
+    #f2eefc;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+  overscroll-behavior: contain;
+}
+
+.projects-page__sr-title {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.projects-page__close {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  color: #27242b;
+  background: #efff69;
+  box-shadow: 4px 4px 0 #27242b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.projects-page__close:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #27242b;
+}
+
+.projects-page__close:focus-visible {
+  outline: 3px solid #ff3e83;
+  outline-offset: 4px;
+}
+
+/* The title never moves: it sits above the deck and the cards slide behind it. */
+.projects-page__masthead {
+  position: absolute;
+  inset: max(16px, env(safe-area-inset-top)) 0 auto;
+  z-index: 6;
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  padding: 0 72px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.projects-page__eyebrow {
+  margin: 0;
+  color: #847b9f;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+
+.projects-page__masthead h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  line-height: 1.15;
+}
+
+.projects-page__rule {
+  width: 58px;
+  height: 4px;
+  border-radius: 999px;
+  background: #2a2138;
+}
+
+.projects-page__scrim {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 5;
+  height: calc(var(--stack-top) + 24px);
+  background: linear-gradient(180deg, #f2eefc 0%, #f1edfb 56%, rgb(241 237 251 / 0) 100%);
+  pointer-events: none;
+}
+
+.projects-page__scroll {
+  position: relative;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* No top padding here: a scroll container's padding shifts what `top` means
+     for the sticky cards, so the deck carries that space itself. */
+  padding: 0 var(--gutter) max(0px, calc(100vh - var(--stack-top) - var(--stack-h)));
+  padding-bottom: max(0px, calc(100dvh - var(--stack-top) - var(--stack-h)));
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.projects-page__scroll::-webkit-scrollbar { width: 0; height: 0; }
+
+.projects-page__scroll:focus-visible {
+  outline: 3px solid rgb(255 62 131 / 55%);
+  outline-offset: -8px;
+}
+
+.project-deck {
+  display: block;
+  padding-top: var(--stack-top);
+}
+
+.project-scene {
+  position: relative;
+  height: calc(var(--stack-h) + var(--dwell));
+}
+
+.project-scene:last-child { height: var(--stack-h); }
+
+.project-scene__sticky {
+  position: sticky;
+  top: var(--stack-top);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  perspective: 1200px;
+  will-change: transform, opacity;
+}
+
+.project-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  width: min(100%, var(--card-w-limit));
+  height: var(--card-h);
+  aspect-ratio: var(--card-ratio);
+  justify-self: center;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 30px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-to) 100%);
+  box-shadow: 0 34px 70px -34px rgb(48 28 76 / 55%), 0 1px 0 rgb(255 255 255 / 20%) inset;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.project-card::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(88% 70% at 88% -14%, rgb(255 255 255 / 24%), rgb(255 255 255 / 0%) 62%);
+  content: '';
+  pointer-events: none;
+}
+
+.project-card__number {
+  position: absolute;
+  right: -4px;
+  bottom: -14px;
+  z-index: 0;
+  color: rgb(255 255 255 / 13%);
+  font-size: clamp(92px, 28vw, 170px);
+  font-weight: 900;
+  letter-spacing: -.05em;
+  line-height: .74;
+  pointer-events: none;
+  user-select: none;
+}
+
+.project-card__media {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  overflow: hidden;
+  border-radius: clamp(14px, 1.6vw, 26px);
+  background: rgb(6 10 30 / 28%);
+  box-shadow: 0 22px 45px -22px rgb(24 10 44 / 70%);
+}
+
+.project-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform .7s cubic-bezier(.22, .61, .36, 1);
+}
+
+.project-card:hover .project-card__image { transform: scale(1.045); }
+
+.project-card__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0b1230;
+  object-fit: contain;
+}
+
+.project-card__media-badge {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 999px;
+  color: #fff;
+  background: rgb(12 11 28 / 62%);
+  box-shadow: 0 10px 24px -14px rgb(5 4 18 / 90%);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.project-card__play-cue {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px 7px 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgb(12 11 28 / 70%);
+  box-shadow: 0 12px 26px -16px rgb(5 4 18 / 90%);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  transition: opacity .28s ease;
+}
+
+.project-card__play-mark {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  color: #17213d;
+  background: #efff69;
+  font-size: 9px;
+}
+
+.project-card__gallery {
+  position: absolute;
+  inset: 0;
+}
+
+.project-card__slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .42s ease, visibility 0s linear .42s;
+}
+
+.project-card__slide[data-active='true'] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+/* An article slide reprints the headline, the account line and the opening of
+   the piece over its cover; a soft scrim keeps that copy legible on
+   photography without hiding the picture underneath. */
+.project-card__slide-note {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: clamp(14px, 2.4vw, 26px);
+  padding-bottom: clamp(38px, 5.4vw, 68px);
+  color: #fff;
+  background: linear-gradient(
+    180deg,
+    rgb(8 11 30 / 84%) 0%,
+    rgb(8 11 30 / 58%) 48%,
+    rgb(8 11 30 / 0%) 100%
+  );
+  pointer-events: none;
+}
+
+.project-card__slide-meta {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  opacity: .82;
+}
+
+.project-card__slide-title {
+  max-width: 26ch;
+  margin: 0;
+  font-size: clamp(15px, 1.9vw, 24px);
+  font-weight: 900;
+  letter-spacing: .01em;
+  line-height: 1.26;
+  text-shadow: 0 2px 14px rgb(4 6 20 / 62%);
+}
+
+.project-card__slide-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 48ch;
+  margin: 2px 0 0;
+  font-size: clamp(11px, 1vw, 13px);
+  line-height: 1.62;
+  opacity: .88;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.project-card__gallery-tabs {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  /* A card can carry eight slides, so the tabs wrap onto a second row rather
+     than hiding the later ones behind a sideways scroll. */
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  padding: 3px;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 999px;
+  background: rgb(12 11 28 / 62%);
+  box-shadow: 0 12px 26px -16px rgb(5 4 18 / 90%);
+}
+
+.project-card__gallery-tabs button {
+  display: inline-flex;
+  align-items: center;
+  /* Every chip keeps its own width, so a wrapped strip never squeezes a label
+     onto a second line inside its pill. */
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: rgb(255 255 255 / 76%);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* A still gallery carries no play cue, so its corner badge moves to the top
+   and leaves the whole bottom edge to the numbered tabs. */
+.project-card__gallery:not(:has(.project-card__slide-note)) .project-card__media-badge {
+  top: 12px;
+  bottom: auto;
+}
+
+/* Once the chips wrap onto a second row the pill outline reads as a blob, so
+   a wide gallery switches to a softer rectangle. */
+.project-card__gallery-tabs:has(button:nth-child(6)) { border-radius: 16px; }
+
+/* Galleries that want the picture's bottom edge clear move the numbered tabs
+   to the top; the corner badge hides there so the two never cover each other. */
+.project-card__gallery[data-tabs-position='top'] .project-card__gallery-tabs {
+  top: 12px;
+  bottom: auto;
+}
+
+.project-card__gallery[data-tabs-position='top'] .project-card__media-badge { display: none; }
+
+.project-card__gallery-tab-index {
+  color: rgb(255 255 255 / 46%);
+  font-size: 8.5px;
+  letter-spacing: .08em;
+}
+
+.project-card__gallery-tab-label { letter-spacing: .03em; }
+
+.project-card__gallery-tabs button[aria-pressed='true'] {
+  color: #17213d;
+  background: #efff69;
+}
+
+.project-card__gallery-tabs button[aria-pressed='true'] .project-card__gallery-tab-index {
+  color: rgb(23 33 61 / 56%);
+}
+
+.project-card__gallery-tabs button:focus-visible {
+  outline: 2px solid #efff69;
+  outline-offset: 2px;
+}
+
+.project-card__gallery .project-card__play-cue {
+  bottom: 52px;
+}
+
+.project-scene:has(.project-aside__button[aria-pressed='true']) .project-card__play-cue {
+  opacity: 0;
+}
+
+.project-card__image[data-media-scan='true'] {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: 50% 0%;
+  transform-origin: top center;
+}
+
+.project-card__slide[data-active='true'] .project-card__image[data-media-scan='true'] {
+  animation: project-board-scan 22s ease-in-out infinite alternate;
+}
+
+@keyframes project-board-scan {
+  0%,
+  14% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  86%,
+  100% {
+    transform: translate3d(0, -75%, 0);
+  }
+}
+
+.project-card__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: center;
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  padding: 0 4px 2px;
+}
+
+.project-scene[data-active='true'] .project-card__media,
+.project-scene[data-active='true'] .project-card__copy,
+.project-scene[data-active='true'] .project-card__number {
+  will-change: transform;
+}
+
+.project-card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  opacity: .82;
+}
+
+.project-card__code {
+  padding: 3px 9px;
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 999px;
+  font-size: .92em;
+  letter-spacing: .08em;
+}
+
+.project-card__title {
+  margin: 0;
+  font-size: clamp(20px, 5.6vw, 28px);
+  font-weight: 900;
+  letter-spacing: .01em;
+  line-height: 1.1;
+}
+
+.project-card__en {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  opacity: .68;
+}
+
+.project-card__summary {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 36ch;
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.62;
+  opacity: .93;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.project-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-card__tags li {
+  padding: 5px 12px;
+  border: 1px solid rgb(255 255 255 / 42%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 10%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.project-card__note {
+  display: none;
+  margin: 6px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgb(255 255 255 / 22%);
+  font-size: 11.5px;
+  letter-spacing: .05em;
+  opacity: .62;
+}
+
+/* The blank space beside the card: an invitation and the button that will open
+   the project popup once it exists. */
+.project-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: none;
+  text-align: center;
+  will-change: transform, opacity;
+}
+
+.project-aside__text {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: #241c31;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  opacity: .9;
+}
+
+.project-aside__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1.5px solid rgb(50 37 72 / 48%);
+  border-radius: 999px;
+  color: #2b2138;
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 12px 26px -16px rgb(52 34 84 / 65%);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 220ms ease, background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.project-aside__button:hover {
+  border-color: #2b2138;
+  background: #fff;
+  box-shadow: 0 16px 30px -14px rgb(52 34 84 / 62%);
+  transform: translateY(-2px);
+}
+
+.project-aside__button:focus-visible {
+  outline: 3px solid #ff3e83;
+  outline-offset: 3px;
+}
+
+.project-aside__arrow { transition: transform 220ms ease; }
+
+.project-aside__button:hover .project-aside__arrow { transform: translate(2px, -2px); }
+
+.projects-page__footer {
+  position: absolute;
+  right: 0;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 18px;
+  pointer-events: none;
+}
+
+.projects-page__counter {
+  color: #6d6490;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+
+.projects-page__track {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.projects-page__track button {
+  width: 22px;
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(43 33 56 / 16%);
+  cursor: pointer;
+  transition: width .28s ease, background-color .28s ease;
+}
+
+.projects-page__track button:hover { background: rgb(43 33 56 / 34%); }
+
+.projects-page__track button[data-active='true'] {
+  width: 34px;
+  background: #2b2138;
+}
+
+.projects-page__track button:focus-visible {
+  outline: 3px solid #ff3e83;
+  outline-offset: 3px;
+}
+
+.projects-page__hint {
+  display: none;
+  margin: 0;
+  color: #7d7499;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  transition: opacity .45s ease;
+}
+
+.projects-page[data-scrolled='true'] .projects-page__hint { opacity: 0; }
+
+.projects-page__toast {
+  position: absolute;
+  bottom: max(58px, calc(env(safe-area-inset-bottom) + 58px));
+  left: 50%;
+  z-index: 7;
+  max-width: min(88vw, 460px);
+  margin: 0;
+  padding: 12px 20px;
+  border-radius: 999px;
+  color: #fff;
+  background: #2b2138;
+  box-shadow: 0 18px 40px -18px rgb(38 24 62 / 70%);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  pointer-events: none;
+  transition: opacity .28s ease, transform .28s ease;
+}
+
+.projects-page__toast[data-visible='true'] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.project-video-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 56px);
+  background: rgb(16 13 28 / 82%);
+}
+
+.project-video-modal[hidden] { display: none; }
+
+.project-video-modal__close {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #221a2e;
+  background: #efff69;
+  box-shadow: 4px 4px 0 #fff;
+  font: inherit;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.project-video-modal__close:focus-visible {
+  outline: 3px solid #efff69;
+  outline-offset: 4px;
+}
+
+.project-video-modal__frame {
+  width: min(1120px, 92vw);
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: clamp(18px, 2.4vw, 34px);
+  background: #050711;
+  box-shadow: 0 42px 100px -42px rgb(0 0 0 / 90%);
+}
+
+.project-video-modal__player {
+  display: block;
+  width: 100%;
+  max-height: min(76dvh, 720px);
+  aspect-ratio: 16 / 9;
+  background: #050711;
+}
+
+.project-video-modal__caption {
+  margin: 16px 0 0;
+  color: rgb(255 255 255 / 78%);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-align: center;
+}
+
+/* Every still in the deck answers to a click, so a picture the reader wants a
+   closer look at becomes a button of its own. */
+.project-card__zoom {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.project-card__zoom:focus-visible {
+  outline: 3px solid #efff69;
+  outline-offset: -7px;
+}
+
+/* One extra button per picture, so a card of eight stills can open any of them
+   without stepping through the numbered tabs first. */
+.project-aside__stills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-width: 100%;
+}
+
+.project-scene[data-flip='true'] .project-aside__stills { justify-content: flex-end; }
+
+.project-aside__stills button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1.5px solid rgb(58 42 78 / 34%);
+  border-radius: 999px;
+  color: #3a2a4e;
+  background: rgb(255 255 255 / 66%);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  cursor: zoom-in;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.project-aside__stills button:hover,
+.project-aside__stills button:focus-visible {
+  border-color: #27242b;
+  color: #221a2e;
+  background: #efff69;
+}
+
+.project-aside__stills button:focus-visible {
+  outline: 2px solid #27242b;
+  outline-offset: 2px;
+}
+
+/* A card that gathers several sources prints one button per link, so any of
+   them opens directly instead of walking the numbered tabs first. */
+.project-aside__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-width: 100%;
+}
+
+.project-scene[data-flip='true'] .project-aside__links { justify-content: flex-end; }
+
+.project-aside__links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1.5px solid rgb(58 42 78 / 34%);
+  border-radius: 999px;
+  color: #3a2a4e;
+  background: rgb(255 255 255 / 66%);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.project-aside__links button:hover,
+.project-aside__links button:focus-visible,
+.project-aside__links button[aria-current='true'] {
+  border-color: #27242b;
+  color: #221a2e;
+  background: #efff69;
+}
+
+.project-aside__links button:focus-visible {
+  outline: 2px solid #27242b;
+  outline-offset: 2px;
+}
+
+.project-aside__link-cta {
+  font-size: 10.5px;
+  opacity: .72;
+}
+
+.project-aside__links button:hover .project-aside__arrow { transform: translate(2px, -2px); }
+
+/*
+ * The deck's own picture viewer. Clicking any still prints it across the
+ * window with the card's other pictures one arrow away; the backdrop, the
+ * close button and Escape all put it away again.
+ */
+.project-lightbox {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  display: flex;
+  overflow: hidden auto;
+  padding: clamp(20px, 5vw, 62px) 0;
+  background: rgb(18 14 28 / 90%);
+  backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+
+.project-lightbox[data-visible='true'] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.project-lightbox__figure {
+  display: block;
+  margin: auto;
+  padding: 0 max(10px, 4vw);
+  max-width: 100%;
+}
+
+.project-lightbox__image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  /* The viewer sizes the picture from the window (see fitLightboxImage), so
+     this cap only backs that up without squashing the height. */
+  max-height: 78dvh;
+  margin: 0 auto;
+  border: 3px solid #27242b;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 70px rgb(0 0 0 / 50%);
+}
+
+.project-lightbox__counter {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  margin: 0;
+  color: #fdfbf4;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  transform: translateX(-50%);
+}
+
+.project-lightbox__close {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  color: #27242b;
+  background: #efff69;
+  box-shadow: 4px 4px 0 #27242b;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.project-lightbox__nav {
+  position: fixed;
+  top: 50%;
+  width: 46px;
+  height: 68px;
+  border: 2px solid #27242b;
+  border-radius: 14px;
+  color: #27242b;
+  background: #fdfbf4;
+  box-shadow: 4px 4px 0 rgb(39 36 43 / 90%);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.project-lightbox__nav--prev { left: max(12px, 1.5vw); }
+.project-lightbox__nav--next { right: max(12px, 1.5vw); }
+.project-lightbox__nav[hidden] { display: none; }
+
+.project-lightbox__close:focus-visible,
+.project-lightbox__nav:focus-visible {
+  outline: 3px solid #efff69;
+  outline-offset: 3px;
+}
+
+.project-lightbox__caption {
+  position: fixed;
+  bottom: max(44px, calc(env(safe-area-inset-bottom) + 32px));
+  left: 50%;
+  margin: 0;
+  padding: 6px 15px;
+  border-radius: 999px;
+  color: #fdfbf4;
+  background: rgb(18 14 28 / 76%);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.project-lightbox__hint {
+  position: fixed;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: 50%;
+  margin: 0;
+  color: rgb(253 251 244 / 68%);
+  font-size: 12px;
+  font-weight: 600;
+  transform: translateX(-50%);
+}
+
+/* The masthead is centred, so the close button drops its label on narrow
+   screens instead of crowding it. */
+@media (max-width: 640px) {
+  .projects-page .project-card {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .projects-page .project-card__tags { gap: 6px; }
+  .projects-page .project-card__tags li { padding: 4px 9px; font-size: 10.5px; }
+  .projects-page .project-card__media { aspect-ratio: 2 / 1; }
+  .projects-page .project-card__eyebrow { font-size: 10px; }
+  .projects-page .project-card__title { font-size: 18px; }
+  .projects-page .project-card__en { font-size: 10.5px; }
+  .projects-page .project-card__summary {
+    display: block;
+    overflow: visible;
+    max-width: none;
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.48;
+    -webkit-line-clamp: unset;
+  }
+
+  .projects-page .project-card__note { display: none; }
+
+  /* The phone-sized media frame is short, so the article slide keeps its
+     headline and account line and drops the opening paragraph. */
+  .projects-page .project-card__slide-note {
+    gap: 3px;
+    padding: 11px 11px 26px;
+  }
+
+  .projects-page .project-card__slide-meta { font-size: 9px; }
+  .projects-page .project-card__slide-title { font-size: 13px; }
+  .projects-page .project-card__slide-excerpt { display: none; }
+
+  /* Nine entry buttons would stack up under the card and run into the footer,
+     so the phone keeps them on one scrollable row. */
+  .projects-page .project-aside__stills {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 100%;
+  }
+
+  .projects-page .project-aside__stills::-webkit-scrollbar { display: none; }
+  .projects-page .project-aside__stills button { flex: 0 0 auto; }
+
+  /* Five article tabs have to stay on one row inside a short media frame. */
+  .projects-page .project-card__gallery-tabs {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .projects-page .project-card__gallery-tabs button {
+    gap: 3px;
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 9px;
+  }
+
+  /* The phone frame is short: the numbers stay, the names move to the buttons
+     under the card so nine clips still fit on one row. */
+  .projects-page .project-card__gallery-tab-index { font-size: 7.5px; }
+  .projects-page .project-card__gallery-tab-label { display: none; }
+
+  .projects-page__close {
+    min-width: 44px;
+    justify-content: center;
+    padding: 10px 13px;
+    font-size: 12.5px;
+  }
+
+  .projects-page__close-label { display: none; }
+}
+
+@media (max-width: 360px) {
+  .projects-page { --card-h: 300px; }
+}
+
+/*
+ * Wide screens lay the deck out as a big card plus the blank space beside it,
+ * with the card hugging the left edge on odd cards and the right edge on even
+ * ones.
+ */
+@media (min-width: 901px) {
+  .projects-page {
+    --gutter: clamp(18px, 4vw, 76px);
+    --stack-top: max(100px, calc((100dvh - var(--card-h)) / 2 - 12px));
+    --footer-space: max(86px, calc(env(safe-area-inset-bottom) + 62px));
+    --card-ratio-number: 2;
+    --card-ratio: 2 / 1;
+    --card-h: 520px;
+    --card-w-limit: calc(var(--card-h) * var(--card-ratio-number));
+    --dwell: 520px;
+  }
+
+  .projects-page__masthead {
+    gap: 5px;
+    padding: 0 112px;
+  }
+
+  .projects-page__eyebrow {
+    font-size: 10.5px;
+    letter-spacing: .24em;
+  }
+
+  .projects-page__masthead h1 { font-size: clamp(24px, 2.3vw, 36px); }
+  .projects-page__rule { width: clamp(56px, 6vw, 92px); }
+
+  .project-deck {
+    max-width: min(1680px, 100%);
+    margin: 0 auto;
+  }
+
+  .project-scene__sticky {
+    grid-template-columns: minmax(0, var(--card-w-limit)) minmax(220px, 1fr);
+    gap: clamp(16px, 2.6vw, 46px);
+  }
+
+  .project-card {
+    grid-template-columns: minmax(0, 56%) minmax(0, 1fr);
+    grid-template-rows: none;
+    gap: clamp(16px, 2.2vw, 38px);
+    padding: clamp(18px, 2.1vw, 38px);
+    border-radius: clamp(26px, 3.2vw, 46px);
+    justify-self: start;
+  }
+
+  .project-card__media {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .project-card__copy {
+    grid-column: 2;
+    grid-row: 1;
+    gap: clamp(6px, .7vw, 12px);
+    padding: 0 clamp(2px, 1.2vw, 22px);
+  }
+
+  .project-card__number {
+    right: -1.5%;
+    bottom: -5%;
+    font-size: clamp(118px, 15vw, 250px);
+  }
+
+  .project-card__eyebrow { font-size: clamp(11px, .85vw, 13px); }
+  .project-card__title { font-size: clamp(25px, 2.75vw, 44px); }
+  .project-card__en { font-size: clamp(11.5px, .95vw, 15px); }
+
+  .project-card__summary {
+    display: block;
+    max-width: 36ch;
+    margin-top: clamp(4px, .6vw, 10px);
+    font-size: clamp(12.5px, 1vw, 16px);
+    line-height: 1.78;
+  }
+
+  .project-card__tags { margin-top: 6px; }
+
+  .project-card__note {
+    display: block;
+    margin-top: clamp(6px, .9vw, 14px);
+    padding-top: clamp(8px, 1vw, 14px);
+  }
+
+  .project-aside {
+    align-items: flex-start;
+    gap: clamp(14px, 1.6vw, 22px);
+    max-width: 30ch;
+    text-align: left;
+  }
+
+  .project-aside__text {
+    padding-bottom: 12px;
+    border-bottom: 1.5px solid rgb(58 42 78 / 38%);
+    font-size: clamp(14px, 1.2vw, 18px);
+    line-height: 1.6;
+  }
+
+  .project-aside__button {
+    padding: 11px 22px;
+    font-size: 13.5px;
+  }
+
+  .project-scene[data-flip='true'] .project-scene__sticky {
+    grid-template-columns: minmax(220px, 1fr) minmax(0, var(--card-w-limit));
+  }
+
+  .project-scene[data-flip='true'] .project-aside {
+    grid-column: 1;
+    grid-row: 1;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .project-scene[data-flip='true'] .project-card {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 56%);
+    justify-self: end;
+  }
+
+  .project-scene[data-flip='true'] .project-card__media { grid-column: 2; }
+
+  .project-scene[data-flip='true'] .project-card__copy {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .project-scene[data-flip='true'] .project-card__number {
+    right: auto;
+    left: -1.5%;
+  }
+
+  .projects-page__hint { display: block; }
+
+  .projects-page__footer { gap: 16px; }
+  .projects-page__track button { width: 30px; }
+  .projects-page__track button[data-active='true'] { width: 52px; }
+}
+
+/* Fixed card heights per desktop band: no viewport-height-driven resizing. */
+@media (min-width: 901px) and (max-width: 1099px) {
+  .projects-page { --card-h: 300px; }
+}
+
+@media (min-width: 1100px) and (max-width: 1299px) {
+  .projects-page { --card-h: 380px; }
+}
+
+@media (min-width: 1300px) and (max-width: 1499px) {
+  .projects-page { --card-h: 450px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-card,
+  .project-aside,
+  .project-scene__sticky {
+    will-change: auto;
+  }
+
+  .project-card__image { transition: none; }
+  .project-card__image[data-media-scan='true'] { animation: none; }
+  .project-card:hover .project-card__image { transform: none; }
+}
+
+/*
+ * Fourth folder: a hover-expand accordion. Wide screens lay the five projects
+ * out as vertical strips that widen under the pointer; narrow screens rotate
+ * the same accordion so each project expands downwards instead.
+ */
+.skills-page {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  /* Short windows scroll instead of squashing the accordion. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: #27242b;
+  background:
+    radial-gradient(120% 95% at 10% 4%, #fdf9ff 0%, #ece0fa 40%, #d5c8ef 100%);
+  overscroll-behavior: contain;
+}
+
+.skills-page__viewport {
+  display: flex;
+  height: auto;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: max(72px, env(safe-area-inset-top)) 22px max(18px, env(safe-area-inset-bottom));
+}
+
+.skills-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding-left: 4px;
+}
+
+.skills-page__kicker {
+  margin: 0;
+  padding: 6px 13px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  background: #efff69;
+  box-shadow: 3px 3px 0 #27242b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.skills-page__title {
+  margin: 0;
+  font-size: clamp(20px, 2.1vw, 30px);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.skills-page__hint {
+  margin: 0 0 0 auto;
+  color: #5f5776;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.skills-page__hint-narrow {
+  display: none;
+}
+
+.skills-page__footnote {
+  margin: 0;
+  color: #6b6284;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.skills-page__sr-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skills-page__close {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  color: #27242b;
+  background: #efff69;
+  box-shadow: 4px 4px 0 #27242b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.skills-page__close:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #27242b;
+}
+
+.skills-page__close:focus-visible {
+  outline: 3px solid #ff3e83;
+  outline-offset: 4px;
+}
+
+/* The preview owns the top-right corner while it is open. `display` is used
+   because the entrance tween leaves inline `visibility`/`opacity` behind. */
+.skills-page[data-lightbox='true'] .skills-page__close {
+  display: none;
+}
+
+.skills-accordion {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 14px;
+  /* A floor on the panel height: below it the page scrolls rather than the
+     panels (and their screenshots) shrinking further. */
+  min-height: 640px;
+}
+
+.skills-panel {
+  position: relative;
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 2px solid #27242b;
+  border-radius: 22px;
+  background: #241f2c;
+  box-shadow: 6px 6px 0 rgb(39 36 43 / 82%);
+  transition: flex-grow 620ms cubic-bezier(0.22, 0.85, 0.24, 1), box-shadow 260ms ease;
+}
+
+.skills-panel[data-active='true'] {
+  flex-grow: 6.4;
+  box-shadow: 10px 10px 0 rgb(39 36 43 / 88%);
+}
+
+.skills-panel__strip-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.skills-panel__art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--panel-accent, #ffe45c);
+}
+
+.skills-panel__art-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.skills-panel__art-wash {
+  position: absolute;
+  inset: 0;
+  /* Duotone the screenshot with the panel's own accent so the collapsed
+     strips stay as colourful as the rest of the portfolio. */
+  background: linear-gradient(200deg, var(--panel-accent, #ffe45c) 0%, var(--panel-accent, #ffe45c) 100%);
+  mix-blend-mode: color;
+  opacity: 0.62;
+}
+
+.skills-panel__art-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(22 17 28 / 10%) 0%,
+    rgb(22 17 28 / 0%) 26%,
+    rgb(22 17 28 / 58%) 64%,
+    rgb(22 17 28 / 90%) 100%
+  );
+}
+
+.skills-panel__code {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  display: grid;
+  min-width: 42px;
+  height: 34px;
+  place-items: center;
+  padding: 0 11px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  background: var(--panel-accent, #ffe45c);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  transform: translateX(-50%);
+  transition: opacity 240ms ease, transform 320ms ease;
+}
+
+.skills-panel__strip {
+  position: absolute;
+  /* Centred on the cover: the number chip keeps the top of every strip, the
+     title sits in the middle of the panel. */
+  top: 50%;
+  left: 50%;
+  bottom: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transform: translate(-50%, -50%);
+  transition: opacity 240ms ease, transform 320ms ease;
+}
+
+.skills-panel__strip-en {
+  color: var(--panel-accent, #ffe45c);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-shadow: 0 2px 8px rgb(18 14 24 / 70%);
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+
+.skills-panel__strip-zh {
+  color: #fff;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-shadow: 0 2px 12px rgb(18 14 24 / 78%);
+  writing-mode: vertical-rl;
+}
+
+.skills-panel[data-active='true'] .skills-panel__code {
+  opacity: 0;
+  transform: translate(-50%, 14px);
+}
+
+.skills-panel[data-active='true'] .skills-panel__strip {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 14px));
+}
+
+.skills-panel__toggle {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.skills-panel__toggle:focus-visible {
+  border-radius: 20px;
+  outline: 3px solid #ff3e83;
+  outline-offset: -7px;
+  opacity: 1;
+}
+
+.skills-panel[data-active='true'] .skills-panel__toggle {
+  pointer-events: none;
+}
+
+.skills-panel__toggle-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.skills-panel__content {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  background: #fdfbf4;
+  opacity: 0;
+  transform: translateY(10px) scale(0.994);
+  transition: opacity 300ms ease, transform 480ms cubic-bezier(0.22, 0.85, 0.24, 1);
+  pointer-events: none;
+}
+
+.skills-panel[data-active='true'] .skills-panel__content {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.skills-panel__content-inner {
+  display: flex;
+  min-width: 0;
+  /* Without this the column refuses to shrink and the body can never scroll. */
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.skills-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px 13px;
+  border-bottom: 2px solid rgb(39 36 43 / 12%);
+}
+
+.skills-panel__thumb {
+  width: 74px;
+  height: 74px;
+  flex: 0 0 auto;
+  border: 2px solid #27242b;
+  border-radius: 16px;
+  background: var(--panel-accent, #ffe45c);
+  object-fit: cover;
+}
+
+.skills-panel__head-text {
+  min-width: 0;
+}
+
+.skills-panel__kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 7px;
+}
+
+.skills-panel__kicker-code {
+  padding: 2px 9px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  background: var(--panel-accent, #ffe45c);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.skills-panel__kicker-label {
+  color: #6d6482;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.skills-panel__title {
+  margin: 0;
+  font-size: clamp(18px, 1.6vw, 25px);
+  font-weight: 900;
+  line-height: 1.16;
+}
+
+.skills-panel__title-en {
+  display: block;
+  margin-top: 4px;
+  color: #7a7090;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.skills-panel__tagline {
+  margin: 0;
+  padding: 13px 22px 0;
+  color: #494259;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.skills-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 22px 26px;
+  scrollbar-color: #bdb0d8 transparent;
+  scrollbar-width: thin;
+}
+
+.skills-section {
+  margin: 0 0 18px;
+}
+
+.skills-section__label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.skills-section__label::before {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border: 2px solid #27242b;
+  border-radius: 3px;
+  background: var(--panel-accent, #ffe45c);
+  content: '';
+}
+
+.skills-section__zh {
+  font-weight: 900;
+}
+
+.skills-section__en {
+  color: #8b82a0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.skills-section__text {
+  margin: 0;
+  color: #33303c;
+  font-size: 14.5px;
+  line-height: 1.85;
+}
+
+.skills-bullets {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skills-bullets__item {
+  position: relative;
+  padding-left: 24px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.skills-bullets__item::before {
+  position: absolute;
+  top: 7px;
+  left: 3px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #27242b;
+  border-radius: 50%;
+  background: var(--panel-accent, #ffe45c);
+  content: '';
+}
+
+.skills-bullets__zh {
+  display: block;
+  font-weight: 700;
+}
+
+.skills-gallery {
+  margin: 0 0 18px;
+}
+
+/*
+ * Two big tiles per row instead of a dense grid of thumbnails. The tiles are
+ * cropped to a shared portrait frame so the rows stay even, and the preview
+ * opens the untouched source image at full size.
+ */
+.skills-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Every tile in a group shares one shape, so rows and captions line up. */
+  align-items: stretch;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.skills-gallery__item {
+  display: block;
+  margin: 0;
+}
+
+.skills-gallery__zoom {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  cursor: zoom-in;
+  transition: transform 200ms ease, filter 200ms ease;
+}
+
+.skills-gallery__zoom:hover,
+.skills-gallery__zoom:focus-visible {
+  filter: drop-shadow(0 10px 14px rgb(39 36 43 / 26%));
+  transform: translateY(-3px);
+}
+
+.skills-gallery__zoom:focus-visible {
+  outline: 3px solid #ff3e83;
+  outline-offset: 3px;
+}
+
+.skills-gallery__image {
+  display: block;
+  width: 100%;
+  /* Each tile keeps the picture's own shape (clamped per image). */
+  aspect-ratio: var(--tile-ratio, 0.8);
+  border: 2px solid #27242b;
+  border-radius: 14px;
+  background: #f4f0fb;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.skills-gallery__badge {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px 10px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  background: #efff69;
+  color: #27242b;
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+.skills-gallery__zoom:hover .skills-gallery__badge,
+.skills-gallery__zoom:focus-visible .skills-gallery__badge,
+.skills-gallery__zoom:focus-within .skills-gallery__badge {
+  opacity: 1;
+}
+
+.skills-gallery__caption {
+  margin-top: 7px;
+  color: #6b6284;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.skills-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 64px 0 76px;
+  background: rgb(24 18 34 / 90%);
+  backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms ease, visibility 200ms ease;
+  pointer-events: none;
+}
+
+.skills-lightbox[data-visible='true'] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.skills-lightbox__figure {
+  /* `margin: auto` centres the picture while it fits and keeps its top edge
+     reachable once it is taller than the window. */
+  display: block;
+  margin: auto;
+  max-width: 100%;
+}
+
+.skills-lightbox__image {
+  display: block;
+  width: auto;
+  max-width: 96vw;
+  border: 3px solid #27242b;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 26px 60px rgb(0 0 0 / 45%);
+  margin: 0 auto;
+}
+
+.skills-lightbox__caption {
+  position: fixed;
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 28px));
+  left: 50%;
+  margin: 0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgb(24 18 34 / 72%);
+  color: #fdfbf4;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.skills-lightbox__counter {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  margin: 0;
+  color: #fdfbf4;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  transform: translateX(-50%);
+}
+
+.skills-lightbox__hint {
+  position: fixed;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: 50%;
+  margin: 0;
+  color: rgb(253 251 244 / 68%);
+  font-size: 12px;
+  font-weight: 600;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.skills-lightbox__close {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  border: 2px solid #27242b;
+  border-radius: 999px;
+  background: #efff69;
+  box-shadow: 4px 4px 0 #27242b;
+  color: #27242b;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.skills-lightbox__nav {
+  position: fixed;
+  top: 50%;
+  width: 46px;
+  height: 68px;
+  border: 2px solid #27242b;
+  border-radius: 14px;
+  background: #fdfbf4;
+  box-shadow: 4px 4px 0 rgb(39 36 43 / 90%);
+  color: #27242b;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.skills-lightbox__nav--prev { left: max(12px, 1.5vw); }
+.skills-lightbox__nav--next { right: max(12px, 1.5vw); }
+.skills-lightbox__nav[hidden] { display: none; }
+
+.skills-lightbox__close:focus-visible,
+.skills-lightbox__nav:focus-visible {
+  outline: 3px solid #ff3e83;
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .skills-page {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .skills-page__viewport {
+    height: auto;
+    min-height: 100%;
+    gap: 12px;
+    padding: max(66px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .skills-page__header {
+    gap: 8px 12px;
+  }
+
+  .skills-page__hint {
+    margin-left: 0;
+  }
+
+  .skills-page__hint-wide {
+    display: none;
+  }
+
+  .skills-page__hint-narrow {
+    display: inline;
+  }
+
+  .skills-accordion {
+    flex-direction: column;
+    gap: 12px;
+    /* Stacked rows size to their own content, so no floor is needed. */
+    min-height: 0;
+  }
+
+  .skills-panel {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-rows: 116px 0fr;
+    box-shadow: 4px 4px 0 rgb(39 36 43 / 80%);
+    transition: grid-template-rows 520ms cubic-bezier(0.22, 0.85, 0.24, 1);
+  }
+
+  .skills-panel[data-active='true'] {
+    grid-template-rows: 132px 1fr;
+  }
+
+  .skills-panel__strip-layer {
+    position: relative;
+    inset: auto;
+    /* Cream, so the dark row title stays legible next to the artwork thumb. */
+    background: #fdfbf4;
+    border-bottom: 2px solid rgb(39 36 43 / 12%);
+  }
+
+  .skills-panel__art {
+    inset: 0 auto 0 0;
+    width: 136px;
+  }
+
+  .skills-panel__art-shade {
+    background: linear-gradient(90deg, rgb(22 17 28 / 30%) 0%, rgb(22 17 28 / 0%) 60%);
+  }
+
+  .skills-panel__code {
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+  }
+
+  .skills-panel[data-active='true'] .skills-panel__code {
+    transform: translateY(-50%);
+  }
+
+  .skills-panel__strip {
+    top: 50%;
+    bottom: auto;
+    left: 156px;
+    right: 52px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    max-width: none;
+    transform: translateY(-50%);
+  }
+
+  .skills-panel[data-active='true'] .skills-panel__strip {
+    transform: translateY(-50%);
+  }
+
+  .skills-panel__strip-en,
+  .skills-panel__strip-zh {
+    writing-mode: horizontal-tb;
+    min-width: 0;
+    white-space: nowrap;
+    text-shadow: none;
+  }
+
+  .skills-panel__strip-en {
+    flex: 0 0 auto;
+    color: #6d6482;
+    font-size: 12px;
+  }
+
+  .skills-panel__strip-zh {
+    flex: 0 1 auto;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    color: #27242b;
+    font-size: 19px;
+    text-overflow: ellipsis;
+  }
+
+  .skills-panel__strip::after {
+    position: absolute;
+    top: 50%;
+    right: -34px;
+    flex: 0 0 auto;
+    color: #27242b;
+    font-size: 20px;
+    font-weight: 900;
+    content: '+';
+    transform: translateY(-50%);
+  }
+
+  .skills-panel[data-active='true'] .skills-panel__strip::after {
+    content: '−';
+  }
+
+  .skills-panel__content {
+    position: relative;
+    inset: auto;
+    min-height: 0;
+    overflow: hidden;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition: none;
+  }
+
+  .skills-panel__head {
+    padding: 14px 16px 11px;
+  }
+
+  .skills-panel__thumb {
+    display: none;
+  }
+
+  .skills-panel__tagline {
+    padding: 11px 16px 0;
+  }
+
+  .skills-panel__body {
+    overflow: visible;
+    padding: 14px 16px 22px;
+  }
+
+  .skills-gallery__grid {
+    gap: 12px;
+  }
+
+  .skills-lightbox {
+    padding: 66px 2vmin 96px;
+  }
+
+  .skills-lightbox__nav {
+    top: auto;
+    bottom: max(56px, env(safe-area-inset-bottom));
+    width: 56px;
+    height: 48px;
+    transform: none;
+  }
+
+  .skills-lightbox__nav--prev { left: 16px; }
+  .skills-lightbox__nav--next { right: 16px; }
+}
+
+@media (max-width: 520px) {
+  .skills-panel__strip-zh {
+    font-size: 17px;
+  }
+
+  .skills-section__text {
+    font-size: 14px;
+  }
+
+  .skills-gallery__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skills-panel,
+  .skills-panel__content,
+  .skills-panel__code,
+  .skills-panel__strip,
+  .skills-page__close,
+  .skills-gallery__zoom,
+  .skills-lightbox {
     transition: none;
   }
 }

@@ -48,6 +48,7 @@ const primaryArtworkFiles = [
   'internship_label_youdao.webp',
   'internship_label_kuaishou.webp',
   'internship_label_jd.webp',
+  'internship_label_zhuanzhuan.webp',
 ] as const;
 
 /** Every station opens the same text-free paper plate; only the copy differs. */
@@ -185,11 +186,17 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
   ];
   artwork.forEach((spec) => register(parts, rig, createArtworkLayer(spec)));
 
+  // The five notes ring the cork instead of stacking on the middle of it, so
+  // every note stays readable: each one only clips a corner of the note pinned
+  // under it, the centres stay far enough apart that the cluster still reads as
+  // five separate pins, and the tilts keep the ring from looking like a clock
+  // face. The ring is centred on the board and every note sits inside the frame.
   const labels: LayerSpec[] = [
-    { name: 'internship-label-migu', file: 'internship_label_migu.webp', width: 2.49, height: 2.52, x: -1.65, y: 1.38, z: 0.42, rotation: -0.13 },
-    { name: 'internship-label-youdao', file: 'internship_label_youdao.webp', width: 2.58, height: 2.58, x: -0.05, y: 1.95, z: 0.44, rotation: 0.1 },
-    { name: 'internship-label-kuaishou', file: 'internship_label_kuaishou.webp', width: 2.37, height: 2.49, x: 1.2, y: 0.7, z: 0.46, rotation: -0.09 },
-    { name: 'internship-label-jd', file: 'internship_label_jd.webp', width: 2.52, height: 2.49, x: 2.2, y: -0.95, z: 0.48, rotation: 0.12 },
+    { name: 'internship-label-migu', file: 'internship_label_migu.webp', width: 2.49, height: 2.52, x: -0.82, y: 1.75, z: 0.42, rotation: -0.13 },
+    { name: 'internship-label-youdao', file: 'internship_label_youdao.webp', width: 2.58, height: 2.58, x: -1.92, y: -0.23, z: 0.44, rotation: 0.07 },
+    { name: 'internship-label-kuaishou', file: 'internship_label_kuaishou.webp', width: 2.37, height: 2.49, x: -0.27, y: -1.93, z: 0.46, rotation: 0.11 },
+    { name: 'internship-label-jd', file: 'internship_label_jd.webp', width: 2.52, height: 2.49, x: 1.68, y: -0.9, z: 0.48, rotation: -0.12 },
+    { name: 'internship-label-zhuanzhuan', file: 'internship_label_zhuanzhuan.webp', width: 2.34, height: 2.38, x: 1.33, y: 1.45, z: 0.5, rotation: 0.15 },
   ];
   const labelLayers = labels.map((spec, stationIndex) => {
     const label = createArtworkLayer(spec);
@@ -223,6 +230,7 @@ export function createJourneyModel(category: Category, reducedMotion = false): S
     { id: 'youdao', name: 'internship-detail-youdao' },
     { id: 'kuaishou', name: 'internship-detail-kuaishou' },
     { id: 'jd', name: 'internship-detail-jd' },
+    { id: 'zhuanzhuan', name: 'internship-detail-zhuanzhuan' },
   ].map((detail) => ({
     ...detail,
     file: findSheetTextPage(detail.id)?.background ?? `internship_detail_${detail.id}.png`,

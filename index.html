@@ -20,15 +20,26 @@
       .pl__ring--c { animation-name: ringC; stroke: #255ff4; }
       .pl__ring--d { animation-name: ringD; stroke: #f42582; }
       .scene-loader__label {
-        display: inline-flex; align-items: flex-end; gap: 0.14em;
+        display: inline-flex; flex-direction: column; align-items: center; gap: 0.42em;
         margin: 1.5em 0 0;
         font-family: "Yuanti SC", YouYuan, "HanziPen SC", "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
         font-size: clamp(20px, 1.6vw + 14px, 30px);
         font-weight: 700; letter-spacing: 0.08em; line-height: 1.15; white-space: nowrap;
-        color: #000;
+        color: #000; text-align: center;
       }
+      .scene-loader__label-line { display: inline-flex; align-items: flex-end; gap: 0.14em; }
       .scene-loader__label-text {
         color: #000;
+      }
+      /* The ASCII tilde sits near cap height; drop it to the middle of the
+         Chinese glyphs so it reads as one centred wave. */
+      .scene-loader__label-tilde {
+        display: inline-block; transform: translateY(0.4em);
+      }
+      .scene-loader__label-subtitle {
+        font-family: "Avenir Next", "Segoe UI", Inter, "Helvetica Neue", Arial, sans-serif;
+        font-size: 0.56em; font-weight: 600; letter-spacing: 0.03em;
+        opacity: 0.6;
       }
       .scene-loader__label-dots {
         display: inline-flex; align-items: flex-end; gap: 0.16em;
@@ -47,6 +58,9 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .scene-loader__label-dot { animation: none; }
+      }
+      @media (max-width: 420px) {
+        .scene-loader__label { font-size: 17px; }
       }
       @keyframes ringA {
         from, 4% { stroke-dasharray: 0 660; stroke-width: 20; stroke-dashoffset: -330; }
@@ -88,7 +102,7 @@
   </head>
   <body>
     <main id="app" aria-label="3D 交互式作品集" aria-busy="true">
-      <div id="initial-loader" class="scene-loader" data-visible="true" role="status" aria-live="polite" aria-label="正在加载完整体验">
+      <div id="initial-loader" class="scene-loader" data-visible="true" role="status" aria-live="polite" aria-label="正在加载一个还挺能折腾的人~ Loading someone who’s always up to something.">
         <svg class="pl" width="240" height="240" viewBox="0 0 240 240" aria-hidden="true">
           <circle class="pl__ring pl__ring--a" cx="120" cy="120" r="105" fill="none" stroke="#000" stroke-width="20" stroke-dasharray="0 660" stroke-dashoffset="-330" stroke-linecap="round"></circle>
           <circle class="pl__ring pl__ring--b" cx="120" cy="120" r="35" fill="none" stroke="#000" stroke-width="20" stroke-dasharray="0 220" stroke-dashoffset="-110" stroke-linecap="round"></circle>
@@ -96,7 +110,8 @@
           <circle class="pl__ring pl__ring--d" cx="155" cy="120" r="70" fill="none" stroke="#000" stroke-width="20" stroke-dasharray="0 440" stroke-linecap="round"></circle>
         </svg>
         <p class="scene-loader__label" aria-hidden="true">
-          <span class="scene-loader__label-text" data-text="网页加载中">网页加载中</span><span class="scene-loader__label-dots"><span class="scene-loader__label-dot"></span><span class="scene-loader__label-dot"></span><span class="scene-loader__label-dot"></span></span>
+          <span class="scene-loader__label-line"><span class="scene-loader__label-text" data-text="正在加载一个还挺能折腾的人">正在加载一个还挺能折腾的人</span><span class="scene-loader__label-tilde">~</span><span class="scene-loader__label-dots"><span class="scene-loader__label-dot"></span><span class="scene-loader__label-dot"></span><span class="scene-loader__label-dot"></span></span></span>
+          <span class="scene-loader__label-subtitle" data-text="Loading someone who’s always up to something.">Loading someone who’s always up to something.</span>
         </p>
       </div>
     </main>
